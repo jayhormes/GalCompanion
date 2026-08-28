@@ -12,7 +12,7 @@ namespace GalCompanion.Tests
         {
             var html = TriliumHtml.BuildEntry(Ts, "モザイクの天使", "att1", "shot 1.png", "跑到 <選項> 會斷行");
 
-            Assert.Contains("<strong>2026-08-28 21:30:05</strong>", html);
+            Assert.Contains("<strong>2026-08-28 21:30:05 · モザイクの天使</strong>", html);
             Assert.Contains("api/attachments/att1/image/shot%201.png", html);
             Assert.Contains("&lt;選項&gt;", html);
             Assert.DoesNotContain("<選項>", html);
@@ -46,7 +46,7 @@ namespace GalCompanion.Tests
         {
             var html = TriliumHtml.BuildEntry(Ts, "モザイクの天使", null, null, "感想");
 
-            Assert.Contains("2026-08-28 21:30:00 · モザイクの天使", html);
+            Assert.Contains("2026-08-28 21:30:05 · モザイクの天使", html);
         }
 
         [Fact]
@@ -54,7 +54,7 @@ namespace GalCompanion.Tests
         {
             var html = TriliumHtml.BuildEntry(Ts, "  ", null, null, "感想");
 
-            Assert.Contains("<strong>2026-08-28 21:30:00</strong>", html);
+            Assert.Contains("<strong>2026-08-28 21:30:05</strong>", html);
             Assert.DoesNotContain("·", html);
         }
 
