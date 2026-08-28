@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Collections.Generic;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -90,6 +91,23 @@ namespace GalCompanion
                 }
             }
             return sb.ToString();
+        }
+
+        // ["a","b"] 形式の配列を取り出す（childNoteIds 用）
+        public static List<string> ExtractStringArray(string json, string field)
+        {
+            var items = new List<string>();
+            var m = Regex.Match(json ?? string.Empty,
+                "\"" + Regex.Escape(field) + "\"\\s*:\\s*\\[([^\\]]*)\\]");
+            if (!m.Success)
+            {
+                return items;
+            }
+            foreach (Match item in Regex.Matches(m.Groups[1].Value, "\"((?:[^\"\\\\]|\\\\.)*)\""))
+            {
+                items.Add(Unescape(item.Groups[1].Value));
+            }
+            return items;
         }
 
         public static int? ExtractInt(string json, string field)

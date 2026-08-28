@@ -42,8 +42,14 @@ namespace GalCompanion
         // 截圖是否自動 append 到 Trilium（false = 只有 📝 手動記錄才送）
         public bool TriliumSendScreenshots { get; set; } = true;
 
-        // gameId → noteId，自動維護
-        public Dictionary<string, string> TriliumNoteBindings { get; set; } = new Dictionary<string, string>();
+        // 日期節點的標題格式。用來比對既有晨間日記（例「2026.08.28 星期五 (Week35) - 晨間日記」）
+        public string TriliumDateFormat { get; set; } = "yyyy.MM.dd";
+
+        // 日期底下的心得 note 標題（📷 截圖寫這裡）
+        public string TriliumImpressionsTitle { get; set; } = "遊戲心得";
+
+        // 心得底下的子議題 note 標題（📝 文字寫這裡）
+        public string TriliumTranslationTitle { get; set; } = "翻譯問題";
 
         public bool SaveSyncEnabled { get; set; } = false;
 

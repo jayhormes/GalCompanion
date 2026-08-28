@@ -5,12 +5,18 @@ namespace GalCompanion
 {
     internal static class TriliumHtml
     {
-        public static string BuildEntry(DateTime timestamp, string attachmentId, string imageTitle, string text)
+        // 心得ノートは 1 日 1 枚で複数タイトルが混ざるので、見出しにゲーム名を入れる
+        public static string BuildEntry(
+            DateTime timestamp, string gameName, string attachmentId, string imageTitle, string text)
         {
             var sb = new StringBuilder();
             sb.Append("<p><strong>")
-              .Append(timestamp.ToString("yyyy-MM-dd HH:mm:ss"))
-              .Append("</strong></p>");
+              .Append(timestamp.ToString("yyyy-MM-dd HH:mm:ss"));
+            if (!string.IsNullOrWhiteSpace(gameName))
+            {
+                sb.Append(" · ").Append(EscapeHtml(gameName.Trim()));
+            }
+            sb.Append("</strong></p>");
 
             if (!string.IsNullOrEmpty(attachmentId))
             {

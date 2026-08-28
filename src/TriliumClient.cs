@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
@@ -16,6 +17,54 @@ namespace GalCompanion
             http = handler == null ? new HttpClient() : new HttpClient(handler);
             http.Timeout = TimeSpan.FromSeconds(15);
             http.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", token);
+        }
+
+        // Trilium の全文検索は曖昧一致（"2026.08.28" で 2015 年のノートも返る）。
+        // 呼び出し側でタイトルを検証すること。
+        public async Task<List<TriliumNote>> SearchNotesAsync(string query, int limit = 20)
+        {
+            var url = $"{baseUrl}/etapi/notes?search={Uri.EscapeDataString(query)}&limit={limit}";
+            var resp = await http.GetAsync(url).ConfigureAwait(false);
+            await EnsureSuccess(resp).ConfigureAwait(false);
+            var body = await resp.Content.ReadAsStringAsync().ConfigureAwait(false);
+            return ParseNoteList(body);
+        }
+
+        public async Task<List<string>> GetChildNoteIdsAsync(string noteId)
+        {
+            var resp = await http.GetAsync($"{baseUrl}/etapi/notes/{noteId}").ConfigureAwait(false);
+            await EnsureSuccess(resp).ConfigureAwait(false);
+            var body = await resp.Content.ReadAsStringAsync().ConfigureAwait(false);
+            return JsonUtil.ExtractStringArray(body, "childNoteIds");
+        }
+
+        public async Task<string> GetNoteTitleAsync(string noteId)
+        {
+            var resp = await http.GetAsync($"{baseUrl}/etapi/notes/{noteId}").ConfigureAwait(false);
+            if (!resp.IsSuccessStatusCode)
+            {
+                return null;
+            }
+            var body = await resp.Content.ReadAsStringAsync().ConfigureAwait(false);
+            return JsonUtil.ExtractString(body, "title");
+        }
+
+        // results 配列から noteId/title の組を取り出す（順序は API の返す順）
+        internal static List<TriliumNote> ParseNoteList(string json)
+        {
+            var notes = new List<TriliumNote>();
+            foreach (System.Text.RegularExpressions.Match m in
+                System.Text.RegularExpressions.Regex.Matches(json ?? string.Empty,
+                    "\"noteId\"\\s*:\\s*\"([^\"]+)\"(?:(?!\"noteId\").)*?\"title\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\"",
+                    System.Text.RegularExpressions.RegexOptions.Singleline))
+            {
+                notes.Add(new TriliumNote
+                {
+                    NoteId = m.Groups[1].Value,
+                    Title = JsonUtil.Unescape(m.Groups[2].Value)
+                });
+            }
+            return notes;
         }
 
         public async Task<string> CreateNoteAsync(string parentNoteId, string title)
@@ -96,5 +145,11 @@ namespace GalCompanion
         {
             http.Dispose();
         }
+    }
+
+    internal sealed class TriliumNote
+    {
+        public string NoteId { get; set; }
+        public string Title { get; set; }
     }
 }

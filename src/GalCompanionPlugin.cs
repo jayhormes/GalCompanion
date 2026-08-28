@@ -26,6 +26,9 @@ namespace GalCompanion
         private HotkeyListener hotkey;
         private BubbleWindow bubble;
         private TriliumService trilium;
+
+        // 日期＋種別 → noteId。同じ日に何度も撮るので解決結果を使い回す
+        private readonly Dictionary<string, string> triliumNoteCache = new Dictionary<string, string>();
         private SaveSyncService saveSync;
         private Game runningGame;
 
@@ -41,10 +44,6 @@ namespace GalCompanion
                 config = new GalCompanionConfig();
                 SavePluginSettings(config);
             }
-            if (config.TriliumNoteBindings == null)
-            {
-                config.TriliumNoteBindings = new Dictionary<string, string>();
-            }
             if (config.SaveRules == null)
             {
                 config.SaveRules = new Dictionary<string, SaveRule>();
@@ -54,7 +53,11 @@ namespace GalCompanion
                 && !string.IsNullOrWhiteSpace(config.TriliumUrl)
                 && !string.IsNullOrWhiteSpace(config.TriliumToken))
             {
-                trilium = new TriliumService(new TriliumClient(config.TriliumUrl, config.TriliumToken));
+                trilium = new TriliumService(
+                    new TriliumClient(config.TriliumUrl, config.TriliumToken),
+                    config.TriliumDateFormat,
+                    config.TriliumImpressionsTitle,
+                    config.TriliumTranslationTitle);
                 logger.Info("GalCompanion Trilium 整合已啟用");
             }
 
@@ -535,7 +538,7 @@ namespace GalCompanion
                         }
                         if (trilium != null && config.TriliumSendScreenshots && runningGame != null)
                         {
-                            SendToTrilium(pngBytes, null);
+                            SendToTrilium(TriliumTarget.Impressions, pngBytes, null);
                             recorded = true;
                         }
                         if (!recorded)
@@ -568,13 +571,13 @@ namespace GalCompanion
                 var win = new NoteInputWindow(runningGame?.Name);
                 if (win.ShowDialog() == true && !string.IsNullOrWhiteSpace(win.NoteText))
                 {
-                    SendToTrilium(null, win.NoteText);
+                    SendToTrilium(TriliumTarget.Translation, null, win.NoteText);
                 }
             });
         }
 
         // 背景送出，不擋 UI；失敗以 Playnite 通知回報
-        private void SendToTrilium(byte[] pngBytes, string text)
+        private void SendToTrilium(TriliumTarget target, byte[] pngBytes, string text)
         {
             var service = trilium;
             var game = runningGame;
@@ -587,15 +590,22 @@ namespace GalCompanion
             {
                 try
                 {
-                    var gameKey = game.Id.ToString();
-                    config.TriliumNoteBindings.TryGetValue(gameKey, out var bound);
-                    var noteId = await service.EnsureGameNoteAsync(config.TriliumParentNoteId, game.Name, bound);
-                    if (noteId != bound)
+                    var now = DateTime.Now;
+                    var cacheKey = service.FormatDate(now) + "|" + target;
+                    string noteId;
+                    lock (triliumNoteCache)
                     {
-                        config.TriliumNoteBindings[gameKey] = noteId;
-                        RunOnUi(() => SavePluginSettings(config));
+                        triliumNoteCache.TryGetValue(cacheKey, out noteId);
                     }
-                    await service.AppendEntryAsync(noteId, DateTime.Now, pngBytes, text);
+                    if (string.IsNullOrEmpty(noteId))
+                    {
+                        noteId = await service.ResolveTargetNoteAsync(now, config.TriliumParentNoteId, target);
+                        lock (triliumNoteCache)
+                        {
+                            triliumNoteCache[cacheKey] = noteId;
+                        }
+                    }
+                    await service.AppendEntryAsync(noteId, now, game.Name, pngBytes, text);
                     logger.Info($"GalCompanion 已寫入 Trilium note {noteId}");
                 }
                 catch (Exception e)

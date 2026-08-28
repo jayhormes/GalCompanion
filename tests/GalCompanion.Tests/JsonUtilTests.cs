@@ -56,5 +56,20 @@ namespace GalCompanion.Tests
         {
             Assert.Null(JsonUtil.ExtractString(json, "noteId"));
         }
+
+        [Fact]
+        public void ExtractStringArray_reads_child_note_ids()
+        {
+            var json = "{\"noteId\":\"x\",\"childNoteIds\":[\"c1\",\"c2\",\"c3\"],\"other\":[]}";
+            Assert.Equal(new[] { "c1", "c2", "c3" }, JsonUtil.ExtractStringArray(json, "childNoteIds"));
+        }
+
+        [Fact]
+        public void ExtractStringArray_returns_empty_when_absent_or_empty()
+        {
+            Assert.Empty(JsonUtil.ExtractStringArray("{\"childNoteIds\":[]}", "childNoteIds"));
+            Assert.Empty(JsonUtil.ExtractStringArray("{}", "childNoteIds"));
+            Assert.Empty(JsonUtil.ExtractStringArray(null, "childNoteIds"));
+        }
     }
 }

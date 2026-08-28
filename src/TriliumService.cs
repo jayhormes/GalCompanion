@@ -1,32 +1,113 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace GalCompanion
 {
+    internal enum TriliumTarget
+    {
+        // 📷 截圖 → 當天的遊戲心得
+        Impressions,
+        // 📝 文字 → 心得底下的翻譯問題
+        Translation
+    }
+
     internal sealed class TriliumService : IDisposable
     {
         private readonly TriliumClient client;
+        private readonly string dateFormat;
+        private readonly string impressionsTitle;
+        private readonly string translationTitle;
 
-        public TriliumService(TriliumClient client)
+        public TriliumService(TriliumClient client, string dateFormat,
+            string impressionsTitle, string translationTitle)
         {
             this.client = client;
+            this.dateFormat = string.IsNullOrWhiteSpace(dateFormat) ? "yyyy.MM.dd" : dateFormat;
+            this.impressionsTitle = string.IsNullOrWhiteSpace(impressionsTitle) ? "遊戲心得" : impressionsTitle;
+            this.translationTitle = string.IsNullOrWhiteSpace(translationTitle) ? "翻譯問題" : translationTitle;
         }
 
-        public async Task<string> EnsureGameNoteAsync(string parentNoteId, string gameTitle, string boundNoteId)
+        public string FormatDate(DateTime date)
         {
-            if (!string.IsNullOrEmpty(boundNoteId))
+            return date.ToString(dateFormat);
+        }
+
+        /// <summary>
+        /// 既存の日記ノート（例「2026.08.28 星期五 (Week35) - 晨間日記」）を探す。
+        /// Trilium の全文検索は曖昧一致なので、日付で始まるタイトルだけを採用する。
+        /// 見つからなければ fallbackParentNoteId の下に日付ノートを作る。
+        /// </summary>
+        public async Task<string> EnsureDateNoteAsync(DateTime date, string fallbackParentNoteId)
+        {
+            var dateKey = FormatDate(date);
+
+            var hits = await client.SearchNotesAsync("\"" + dateKey + "\"", 30).ConfigureAwait(false);
+            var match = PickDateNote(hits, dateKey);
+            if (match != null)
             {
-                return boundNoteId;
+                return match;
             }
-            if (string.IsNullOrWhiteSpace(parentNoteId))
+
+            if (string.IsNullOrWhiteSpace(fallbackParentNoteId))
             {
-                throw new InvalidOperationException("未設定 TriliumParentNoteId，無法自動建立遊戲筆記");
+                throw new InvalidOperationException(
+                    $"找不到 {dateKey} 的日記，且未設定 TriliumParentNoteId 可供建立");
             }
-            return await client.CreateNoteAsync(parentNoteId, gameTitle).ConfigureAwait(false);
+            return await client.CreateNoteAsync(fallbackParentNoteId, dateKey).ConfigureAwait(false);
+        }
+
+        // 検索結果は曖昧一致を含むため、日付で始まるものだけを正解とする
+        internal static string PickDateNote(List<TriliumNote> hits, string dateKey)
+        {
+            if (hits == null || string.IsNullOrEmpty(dateKey))
+            {
+                return null;
+            }
+            foreach (var note in hits)
+            {
+                var title = (note.Title ?? string.Empty).TrimStart();
+                if (title.StartsWith(dateKey, StringComparison.Ordinal))
+                {
+                    return note.NoteId;
+                }
+            }
+            return null;
+        }
+
+        public async Task<string> EnsureChildNoteAsync(string parentNoteId, string title)
+        {
+            var childIds = await client.GetChildNoteIdsAsync(parentNoteId).ConfigureAwait(false);
+            foreach (var childId in childIds)
+            {
+                var childTitle = await client.GetNoteTitleAsync(childId).ConfigureAwait(false);
+                if (string.Equals(childTitle, title, StringComparison.Ordinal))
+                {
+                    return childId;
+                }
+            }
+            return await client.CreateNoteAsync(parentNoteId, title).ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// 日期 → 遊戲心得 → 翻譯問題 を解決して、書き込み先の noteId を返す。
+        /// </summary>
+        public async Task<string> ResolveTargetNoteAsync(
+            DateTime date, string fallbackParentNoteId, TriliumTarget target)
+        {
+            var dateNoteId = await EnsureDateNoteAsync(date, fallbackParentNoteId).ConfigureAwait(false);
+            var impressionsId = await EnsureChildNoteAsync(dateNoteId, impressionsTitle).ConfigureAwait(false);
+
+            if (target == TriliumTarget.Impressions)
+            {
+                return impressionsId;
+            }
+            return await EnsureChildNoteAsync(impressionsId, translationTitle).ConfigureAwait(false);
         }
 
         // pngBytes 或 text 至少一個；圖先上傳成 attachment，再把整段 entry 接到 note 尾端
-        public async Task AppendEntryAsync(string noteId, DateTime timestamp, byte[] pngBytes, string text)
+        public async Task AppendEntryAsync(
+            string noteId, DateTime timestamp, string gameName, byte[] pngBytes, string text)
         {
             string attachmentId = null;
             string imageTitle = null;
@@ -36,7 +117,7 @@ namespace GalCompanion
                 attachmentId = await client.CreateAttachmentAsync(noteId, imageTitle, "image/png", pngBytes).ConfigureAwait(false);
             }
 
-            var entry = TriliumHtml.BuildEntry(timestamp, attachmentId, imageTitle, text);
+            var entry = TriliumHtml.BuildEntry(timestamp, gameName, attachmentId, imageTitle, text);
             var content = await client.GetNoteContentAsync(noteId).ConfigureAwait(false) ?? string.Empty;
             await client.SetNoteContentAsync(noteId, content + entry).ConfigureAwait(false);
         }

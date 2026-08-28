@@ -11,7 +11,7 @@ Playnite 外掛。給 GalGame 玩家的遊玩伴侶：截圖筆記、（規劃�
 - 截圖歸檔路徑相容 ExtraMetadata 慣例：`<Playnite設定目錄>\ExtraMetadata\games\<GameId>\screenshots\`
 - 遊戲右鍵選單 → GalCompanion → 打開截圖資料夾
 - 成功時播系統提示音；沒有遊戲在跑時截到的圖存到 `ExtraMetadata\screenshots\unassigned\`
-- **Trilium 直送**（Phase 2）：每款遊戲對應一則 note，截圖自動 append（時間戳＋圖）；氣泡窗 📝 按鈕可補文字記錄（記漢化問題用）
+- **Trilium 直送**（Phase 2）：📷 截圖寫進當天的「遊戲心得」、📝 文字寫進其下的「翻譯問題」子 note；會自動找當天既有的晨間日記掛上去
 - **存檔跨裝置同步**（Phase 3）：啟動前自動判定拉/推/衝突、結束後自動推上 NAS、當機漏推下次啟動補推；衝突一律跳對話框不自動覆蓋；遊戲右鍵選單可手動推/拉
 
 ## 安裝
@@ -41,9 +41,11 @@ Playnite 外掛。給 GalGame 玩家的遊玩伴侶：截圖筆記、（規劃�
 | `TriliumEnabled` | `false` | 開啟 Trilium 直送 |
 | `TriliumUrl` | 空 | 例 `http://nas:8080`（需 Trilium ≥ 0.61 的 ETAPI） |
 | `TriliumToken` | 空 | Trilium → Options → ETAPI 產生 |
-| `TriliumParentNoteId` | 空 | 遊戲筆記的父 note id；第一次記錄時自動在其下建遊戲子 note |
+| `TriliumParentNoteId` | 空 | **找不到當天日記時**，在這個 note 底下建日期 note |
+| `TriliumDateFormat` | `yyyy.MM.dd` | 用來比對既有日記標題的日期格式 |
+| `TriliumImpressionsTitle` | `遊戲心得` | 日期底下的心得 note 標題（📷 寫這裡） |
+| `TriliumTranslationTitle` | `翻譯問題` | 心得底下的子議題 note 標題（📝 寫這裡） |
 | `TriliumSendScreenshots` | `true` | 截圖自動 append；`false` 則只有 📝 手動記錄才送 |
-| `TriliumNoteBindings` | `{}` | gameId → noteId 對應，自動維護；想綁到既有 note 可手動填 |
 | `SaveSyncEnabled` | `false` | 開啟存檔同步 |
 | `RclonePath` | `rclone` | rclone.exe 路徑；在 PATH 裡就不用改 |
 | `RcloneRemote` | 空 | rclone remote＋根目錄，例 `nas:playnite-saves` |
