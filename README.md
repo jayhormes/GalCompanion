@@ -50,6 +50,8 @@ Playnite 外掛。給 GalGame 玩家的遊玩伴侶：截圖筆記、（規劃�
 | `SaveSyncToleranceSeconds` | `3` | 時間戳比較容差；zip 時間戳解析度 2 秒，勿低於 3 |
 | `SaveSyncKeepHistory` | `true` | NAS 端每次推送另存 `history/*.zip`，誤覆蓋可救 |
 | `SaveRules` | `{}` | gameId → 存檔路徑規則，見下 |
+| `LocaleEmulatorPath` | 空 | LEProc.exe 完整路徑；填了遊戲右鍵選單才會出現 LE 轉換 |
+| `LocaleEmulatorProfileGuid` | 空 | LE profile 的 GUID（走 `-runas`）；留空用 LE 預設 profile |
 
 ### 存檔同步設定
 
@@ -71,6 +73,14 @@ Playnite 外掛。給 GalGame 玩家的遊玩伴侶：截圖筆記、（規劃�
 - **結束後**：打包推上 NAS（`latest.zip`＋`manifest.json`＋history），背景執行
 - **Playnite 啟動時**：掃全部規則補推漏掉的
 - 同步失敗會問你要不要照樣啟動遊戲（存檔可能不是最新）
+
+### 日區啟動（Locale Emulator）
+
+Playnite 內建就有 Locale Emulator 的模擬器定義（LEProc + `"{ImagePath}"`），原生路徑是「管理模擬器」加 LE 後逐款把啟動動作改成模擬器型 — 每款都要手點。GalCompanion 提供批次版：
+
+1. config 填 `LocaleEmulatorPath`（LEProc.exe 位置）；要指定 profile 就填 `LocaleEmulatorProfileGuid`，留空用 LEGUI 設的預設 profile（記得把預設設成日文）
+2. 選取一款或多款遊戲 → 右鍵 → GalCompanion → **改用 Locale Emulator 啟動**：原啟動動作降為備用，插入 LEProc 動作當 Play 鍵
+3. **還原直接啟動**可整批退回
 
 ### 為什麼不用 Ludusavi？
 

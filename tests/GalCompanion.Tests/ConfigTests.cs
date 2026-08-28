@@ -32,6 +32,8 @@ namespace GalCompanion.Tests
             Assert.True(config.SaveSyncKeepHistory);
             Assert.NotNull(config.SaveRules);
             Assert.Empty(config.SaveRules);
+            Assert.Equal(string.Empty, config.LocaleEmulatorPath);
+            Assert.Equal(string.Empty, config.LocaleEmulatorProfileGuid);
         }
 
         [Fact]

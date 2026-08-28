@@ -62,6 +62,12 @@ namespace GalCompanion
         // gameId → 存檔路徑規則
         public Dictionary<string, SaveRule> SaveRules { get; set; } = new Dictionary<string, SaveRule>();
 
+        // LEProc.exe 完整路徑；填了遊戲右鍵選單才會出現 LE 轉換
+        public string LocaleEmulatorPath { get; set; } = string.Empty;
+
+        // LE profile GUID（留空用 LE 預設 profile）
+        public string LocaleEmulatorProfileGuid { get; set; } = string.Empty;
+
         public static double ClampOpacity(double value)
         {
             if (value < 0.1)

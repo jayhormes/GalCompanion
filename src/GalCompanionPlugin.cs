@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing.Imaging;
 using System.IO;
+using System.Linq;
 using System.Media;
 using System.Threading;
 using System.Threading.Tasks;
@@ -353,6 +354,22 @@ namespace GalCompanion
                 }
             };
 
+            if (!string.IsNullOrWhiteSpace(config.LocaleEmulatorPath))
+            {
+                yield return new GameMenuItem
+                {
+                    Description = "改用 Locale Emulator 啟動",
+                    MenuSection = "GalCompanion",
+                    Action = a => ConvertToLocaleEmulator(a.Games)
+                };
+                yield return new GameMenuItem
+                {
+                    Description = "還原直接啟動",
+                    MenuSection = "GalCompanion",
+                    Action = a => RevertLocaleEmulator(a.Games)
+                };
+            }
+
             if (saveSync != null && args.Games.Count == 1 && ResolveRulePaths(args.Games[0]) != null)
             {
                 yield return new GameMenuItem
@@ -368,6 +385,65 @@ namespace GalCompanion
                     Action = a => ManualPull(a.Games[0])
                 };
             }
+        }
+
+        // 原本的啟動動作降為備用，插入 LEProc 動作當 Play；支援多選批次
+        private void ConvertToLocaleEmulator(List<Game> games)
+        {
+            var converted = 0;
+            var skipped = 0;
+            foreach (var game in games)
+            {
+                var original = game.GameActions?.FirstOrDefault(x => x.Type == GameActionType.File && x.IsPlayAction);
+                if (original == null
+                    || game.GameActions.Any(x => x.Name == LocaleEmulatorActions.ActionName))
+                {
+                    skipped++;
+                    continue;
+                }
+                original.IsPlayAction = false;
+                game.GameActions.Insert(0, new GameAction
+                {
+                    Name = LocaleEmulatorActions.ActionName,
+                    Type = GameActionType.File,
+                    Path = config.LocaleEmulatorPath,
+                    Arguments = LocaleEmulatorActions.BuildArguments(config.LocaleEmulatorProfileGuid, original.Path),
+                    WorkingDir = string.IsNullOrWhiteSpace(original.WorkingDir) ? "{InstallDir}" : original.WorkingDir,
+                    IsPlayAction = true
+                });
+                PlayniteApi.Database.Games.Update(game);
+                converted++;
+            }
+            PlayniteApi.Dialogs.ShowMessage(
+                $"已轉換 {converted} 款、跳過 {skipped} 款（沒有可轉的檔案啟動動作，或已轉過）。",
+                "GalCompanion");
+        }
+
+        private void RevertLocaleEmulator(List<Game> games)
+        {
+            var reverted = 0;
+            foreach (var game in games)
+            {
+                var leActions = game.GameActions?
+                    .Where(x => x.Name == LocaleEmulatorActions.ActionName)
+                    .ToList();
+                if (leActions == null || leActions.Count == 0)
+                {
+                    continue;
+                }
+                foreach (var action in leActions)
+                {
+                    game.GameActions.Remove(action);
+                }
+                var first = game.GameActions.FirstOrDefault(x => x.Type == GameActionType.File);
+                if (first != null)
+                {
+                    first.IsPlayAction = true;
+                }
+                PlayniteApi.Database.Games.Update(game);
+                reverted++;
+            }
+            PlayniteApi.Dialogs.ShowMessage($"已還原 {reverted} 款。", "GalCompanion");
         }
 
         private void ManualPull(Game game)
