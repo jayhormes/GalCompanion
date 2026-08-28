@@ -55,11 +55,11 @@ namespace GalCompanion.Tests
             Assert.Equal("x1", TriliumService.PickDateNote(hits, "2026.08.28"));
         }
 
-        [Theory]
-        [InlineData(null)]
-        public void PickDateNote_handles_null_input(List<TriliumNote> hits)
+        [Fact]
+        public void PickDateNote_handles_null_input()
         {
-            Assert.Null(TriliumService.PickDateNote(hits, "2026.08.28"));
+            Assert.Null(TriliumService.PickDateNote(null, "2026.08.28"));
+            Assert.Null(TriliumService.PickDateNote(new List<TriliumNote>(), "2026.08.28"));
         }
 
         [Fact]
