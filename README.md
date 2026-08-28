@@ -21,11 +21,11 @@ Playnite 外掛。給 GalGame 玩家的遊玩伴侶：截圖筆記、（規劃�
 
 ## 設定
 
-沒有 UI，直接改 JSON（改完重啟 Playnite 生效）：
+**附加元件 → 擴充功能 → GalCompanion** 裡面設定，存檔後即時生效（熱鍵、Trilium、存檔同步都會用新設定重建，不用重啟）。
 
-```
-%AppData%\Playnite\ExtensionsData\80cdee03-e216-4df2-b247-a56056f61543\config.json
-```
+氣泡窗跑到螢幕外時（換螢幕或改解析度會發生），設定畫面裡有「把氣泡窗移回畫面中央」。下次顯示時也會自動檢查座標，看不到就自己回中央。
+
+設定存在 `%AppData%\Playnite\ExtensionsData\80cdee03-e216-4df2-b247-a56056f61543\config.json`，原本手寫的內容會直接沿用。`SaveRules` 因為是逐遊戲的路徑表，仍然只能改 JSON。
 
 | 欄位 | 預設 | 說明 |
 |---|---|---|

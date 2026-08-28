@@ -11,6 +11,7 @@ using System.Media;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Media.Imaging;
 
@@ -22,7 +23,8 @@ namespace GalCompanion
 
         public override Guid Id { get; } = Guid.Parse("80cdee03-e216-4df2-b247-a56056f61543");
 
-        private GalCompanionConfig config;
+        private ConfigViewModel settings;
+        private GalCompanionConfig config => settings?.Settings;
         private HotkeyListener hotkey;
         private BubbleWindow bubble;
         private TriliumService trilium;
@@ -34,21 +36,96 @@ namespace GalCompanion
 
         public GalCompanionPlugin(IPlayniteAPI api) : base(api)
         {
+            // Load/SavePluginSettings は ExtensionsData/<id>/config.json を読み書きするので、
+            // 手で書いた config.json もそのまま引き継がれる
+            settings = new ConfigViewModel(
+                () => LoadPluginSettings<GalCompanionConfig>(),
+                saved =>
+                {
+                    SavePluginSettings(saved);
+                    ApplySettings();
+                });
+
+            Properties = new GenericPluginProperties { HasSettings = true };
+        }
+
+        public override ISettings GetSettings(bool firstRunSettings)
+        {
+            return settings;
+        }
+
+        public override UserControl GetSettingsView(bool firstRunSettings)
+        {
+            return new SettingsView(ResetBubblePosition) { DataContext = settings };
+        }
+
+        // 設定保存後に呼ぶ。ホットキー・Trilium・同期を今の設定で作り直す
+        private void ApplySettings()
+        {
+            hotkey?.Dispose();
+            hotkey = null;
+            trilium?.Dispose();
+            trilium = null;
+            saveSync = null;
+            lock (triliumNoteCache)
+            {
+                triliumNoteCache.Clear();
+            }
+
+            InitTrilium();
+            InitSaveSync();
+            InitHotkey();
+            RunOnUi(() =>
+            {
+                if (bubble != null)
+                {
+                    bubble.Opacity = GalCompanionConfig.ClampOpacity(config.BubbleOpacity);
+                }
+            });
+        }
+
+        /// <summary>気泡ウィンドウの保存座標を捨て、表示中なら即座に中央へ戻す。</summary>
+        private void ResetBubblePosition()
+        {
+            settings.ResetBubblePosition();
+            SavePluginSettings(config);
+            RunOnUi(() =>
+            {
+                if (bubble == null)
+                {
+                    return;
+                }
+                double x, y;
+                BubblePlacement.Center(bubble.ActualWidth, bubble.ActualHeight, WorkArea(), out x, out y);
+                bubble.Left = x;
+                bubble.Top = y;
+            });
+        }
+
+        private static ScreenRect WorkArea()
+        {
+            var area = SystemParameters.WorkArea;
+            return new ScreenRect(area.Left, area.Top, area.Width, area.Height);
+        }
+
+        private static ScreenRect VirtualScreen()
+        {
+            return new ScreenRect(
+                SystemParameters.VirtualScreenLeft,
+                SystemParameters.VirtualScreenTop,
+                SystemParameters.VirtualScreenWidth,
+                SystemParameters.VirtualScreenHeight);
         }
 
         public override void OnApplicationStarted(OnApplicationStartedEventArgs args)
         {
-            config = LoadPluginSettings<GalCompanionConfig>();
-            if (config == null)
-            {
-                config = new GalCompanionConfig();
-                SavePluginSettings(config);
-            }
-            if (config.SaveRules == null)
-            {
-                config.SaveRules = new Dictionary<string, SaveRule>();
-            }
+            InitTrilium();
+            InitSaveSync();
+            InitHotkey();
+        }
 
+        private void InitTrilium()
+        {
             if (config.TriliumEnabled
                 && !string.IsNullOrWhiteSpace(config.TriliumUrl)
                 && !string.IsNullOrWhiteSpace(config.TriliumToken))
@@ -60,7 +137,10 @@ namespace GalCompanion
                     config.TriliumTranslationTitle);
                 logger.Info("GalCompanion Trilium 整合已啟用");
             }
+        }
 
+        private void InitSaveSync()
+        {
             if (config.SaveSyncEnabled && !string.IsNullOrWhiteSpace(config.RcloneRemote))
             {
                 saveSync = new SaveSyncService(
@@ -74,7 +154,10 @@ namespace GalCompanion
                 logger.Info("GalCompanion 存檔同步已啟用");
                 Task.Run(() => CatchUpPush());
             }
+        }
 
+        private void InitHotkey()
+        {
             if (string.IsNullOrWhiteSpace(config.Hotkey))
             {
                 return;
@@ -311,16 +394,14 @@ namespace GalCompanion
                         config.BubbleY = y;
                         SavePluginSettings(config);
                     };
-                    if (config.BubbleX.HasValue && config.BubbleY.HasValue)
-                    {
-                        bubble.Left = config.BubbleX.Value;
-                        bubble.Top = config.BubbleY.Value;
-                    }
-                    else
-                    {
-                        bubble.Left = SystemParameters.WorkArea.Right - 120;
-                        bubble.Top = SystemParameters.WorkArea.Top + 16;
-                    }
+                    // 解像度やモニタ構成が変わると保存座標が画面外に出るので毎回検証する
+                    double x, y;
+                    BubblePlacement.Resolve(
+                        config.BubbleX, config.BubbleY,
+                        bubble.ActualWidth, bubble.ActualHeight,
+                        VirtualScreen(), WorkArea(), out x, out y);
+                    bubble.Left = x;
+                    bubble.Top = y;
                 }
                 bubble.Show();
             });
