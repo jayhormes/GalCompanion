@@ -23,8 +23,9 @@ namespace GalCompanion.Tests
             Assert.Equal(string.Empty, config.TriliumToken);
             Assert.Equal(string.Empty, config.TriliumParentNoteId);
             Assert.True(config.TriliumSendScreenshots);
-            Assert.NotNull(config.TriliumNoteBindings);
-            Assert.Empty(config.TriliumNoteBindings);
+            Assert.Equal("yyyy.MM.dd", config.TriliumDateFormat);
+            Assert.Equal("遊戲心得", config.TriliumImpressionsTitle);
+            Assert.Equal("翻譯問題", config.TriliumTranslationTitle);
             Assert.False(config.SaveSyncEnabled);
             Assert.Equal("rclone", config.RclonePath);
             Assert.Equal(string.Empty, config.RcloneRemote);
