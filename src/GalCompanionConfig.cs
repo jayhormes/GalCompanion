@@ -18,11 +18,13 @@ namespace GalCompanion
 
         public bool ClientAreaOnly { get; set; } = true;
 
-        public bool CopyToClipboard { get; set; } = true;
-
-        public bool SaveToFile { get; set; } = true;
+        // 本地 PNG 歸檔只有搭配 Screenshot Visualizer 之類擴充或離線備份才有用，預設關
+        public bool SaveToFile { get; set; } = false;
 
         public bool PlaySound { get; set; } = true;
+
+        // 氣泡窗平時透明度（0.1–1.0），滑鼠移上去恆為 1.0
+        public double BubbleOpacity { get; set; } = 0.55;
 
         // 留空 = <Playnite 設定目錄>\ExtraMetadata
         public string ScreenshotRoot { get; set; } = string.Empty;
@@ -42,5 +44,14 @@ namespace GalCompanion
 
         // gameId → noteId，自動維護
         public Dictionary<string, string> TriliumNoteBindings { get; set; } = new Dictionary<string, string>();
+
+        public static double ClampOpacity(double value)
+        {
+            if (value < 0.1)
+            {
+                return 0.1;
+            }
+            return value > 1.0 ? 1.0 : value;
+        }
     }
 }

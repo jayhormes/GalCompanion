@@ -4,9 +4,10 @@ Playnite 外掛。給 GalGame 玩家的遊玩伴侶：截圖筆記、（規劃�
 
 ## 目前功能（v0.1 — Phase 1 MVP）
 
-- 遊戲啟動時顯示**浮動氣泡窗**（不搶焦點），點 📷 截圖前景遊戲視窗；左側把手可拖曳，位置會記住
-- 可選全域熱鍵（預設 `Shift+F12`，config 留空停用）
-- 同時複製到剪貼簿（直接貼進 Trilium 寫筆記）＋ 存檔到該遊戲的截圖資料夾
+- 遊戲啟動時顯示**浮動氣泡窗**（不搶焦點）；左側把手可拖曳，位置會記住，透明度可調（`BubbleOpacity`）
+- 📷 **左鍵＝記錄**：送 Trilium（啟用時）＋本地歸檔（`SaveToFile` 開啟時）；兩者都沒開就退回剪貼簿
+- 📷 **右鍵＝只進剪貼簿**：不落地、不上傳，臨時貼圖用
+- 可選全域熱鍵（預設 `Shift+F12`，等同左鍵；config 留空停用）
 - 截圖歸檔路徑相容 ExtraMetadata 慣例：`<Playnite設定目錄>\ExtraMetadata\games\<GameId>\screenshots\`
 - 遊戲右鍵選單 → GalCompanion → 打開截圖資料夾
 - 成功時播系統提示音；沒有遊戲在跑時截到的圖存到 `ExtraMetadata\screenshots\unassigned\`
@@ -32,8 +33,8 @@ Playnite 外掛。給 GalGame 玩家的遊玩伴侶：截圖筆記、（規劃�
 | `BubbleX` / `BubbleY` | 空 | 氣泡窗位置，拖曳後自動記錄 |
 | `CaptureMode` | `auto` | `auto`：先試 PrintWindow，抓到全黑改抓螢幕。`printwindow` / `screencrop` 強制指定 |
 | `ClientAreaOnly` | `true` | 只截遊戲畫面，不含視窗標題列邊框 |
-| `CopyToClipboard` | `true` | 截圖複製到剪貼簿 |
-| `SaveToFile` | `true` | 截圖存 PNG |
+| `SaveToFile` | `false` | 左鍵截圖存本地 PNG。Playnite 本身不會顯示它們，只有搭配 Screenshot Visualizer 之類擴充或想留離線備份才需要開 |
+| `BubbleOpacity` | `0.55` | 氣泡窗平時透明度（0.1–1.0），滑鼠移上去恆為不透明 |
 | `PlaySound` | `true` | 成功播提示音 |
 | `ScreenshotRoot` | 空 | 自訂截圖根目錄；留空用 Playnite 的 ExtraMetadata |
 | `TriliumEnabled` | `false` | 開啟 Trilium 直送 |

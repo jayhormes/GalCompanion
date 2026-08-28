@@ -13,7 +13,8 @@ namespace GalCompanion
     {
         public event Action<double, double> Moved;
 
-        public BubbleWindow(Action onScreenshot, Action onNote)
+        // onCapture＝左鍵（記錄：Trilium/歸檔）、onClipboard＝右鍵（只進剪貼簿）
+        public BubbleWindow(Action onCapture, Action onClipboard, Action onNote, double idleOpacity)
         {
             WindowStyle = WindowStyle.None;
             ResizeMode = ResizeMode.NoResize;
@@ -23,7 +24,7 @@ namespace GalCompanion
             ShowInTaskbar = false;
             ShowActivated = false;
             SizeToContent = SizeToContent.WidthAndHeight;
-            Opacity = 0.55;
+            Opacity = idleOpacity;
 
             var grip = new Border
             {
@@ -56,7 +57,12 @@ namespace GalCompanion
                 Cursor = Cursors.Hand,
                 Focusable = false
             };
-            button.Click += (s, e) => onScreenshot?.Invoke();
+            button.Click += (s, e) => onCapture?.Invoke();
+            button.MouseRightButtonUp += (s, e) =>
+            {
+                onClipboard?.Invoke();
+                e.Handled = true;
+            };
 
             var panel = new StackPanel { Orientation = Orientation.Horizontal };
             panel.Children.Add(grip);
@@ -87,7 +93,7 @@ namespace GalCompanion
             };
 
             MouseEnter += (s, e) => Opacity = 1.0;
-            MouseLeave += (s, e) => Opacity = 0.55;
+            MouseLeave += (s, e) => Opacity = idleOpacity;
 
             SourceInitialized += (s, e) =>
             {

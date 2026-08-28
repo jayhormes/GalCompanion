@@ -59,7 +59,7 @@ namespace GalCompanion
 
             try
             {
-                hotkey = HotkeyListener.Register(config.Hotkey, TakeScreenshot);
+                hotkey = HotkeyListener.Register(config.Hotkey, CaptureRecord);
                 logger.Info($"GalCompanion 截圖熱鍵已註冊：{config.Hotkey}");
             }
             catch (Exception e)
@@ -132,7 +132,11 @@ namespace GalCompanion
             {
                 if (bubble == null)
                 {
-                    bubble = new BubbleWindow(TakeScreenshot, trilium == null ? (Action)null : OpenNoteInput);
+                    bubble = new BubbleWindow(
+                        CaptureRecord,
+                        CaptureClipboard,
+                        trilium == null ? (Action)null : OpenNoteInput,
+                        GalCompanionConfig.ClampOpacity(config.BubbleOpacity));
                     bubble.Moved += (x, y) =>
                     {
                         config.BubbleX = x;
@@ -194,7 +198,18 @@ namespace GalCompanion
                 game?.Id);
         }
 
-        private void TakeScreenshot()
+        // 左鍵/熱鍵：記錄（Trilium、可選本地歸檔）；右鍵：只進剪貼簿
+        private void CaptureRecord()
+        {
+            Capture(clipboardOnly: false);
+        }
+
+        private void CaptureClipboard()
+        {
+            Capture(clipboardOnly: true);
+        }
+
+        private void Capture(bool clipboardOnly)
         {
             try
             {
@@ -206,35 +221,44 @@ namespace GalCompanion
                         return;
                     }
 
-                    if (config.CopyToClipboard)
+                    if (clipboardOnly)
                     {
                         CopyToClipboard(bmp);
                     }
-
-                    byte[] pngBytes;
-                    using (var ms = new MemoryStream())
+                    else
                     {
-                        bmp.Save(ms, ImageFormat.Png);
-                        pngBytes = ms.ToArray();
-                    }
+                        byte[] pngBytes;
+                        using (var ms = new MemoryStream())
+                        {
+                            bmp.Save(ms, ImageFormat.Png);
+                            pngBytes = ms.ToArray();
+                        }
 
-                    if (config.SaveToFile)
-                    {
-                        var dir = GetScreenshotDir(runningGame);
-                        Directory.CreateDirectory(dir);
-                        var path = Path.Combine(dir, $"{DateTime.Now:yyyyMMdd_HHmmss_fff}.png");
-                        File.WriteAllBytes(path, pngBytes);
-                        logger.Info($"GalCompanion 截圖已存：{path}");
+                        var recorded = false;
+                        if (config.SaveToFile)
+                        {
+                            var dir = GetScreenshotDir(runningGame);
+                            Directory.CreateDirectory(dir);
+                            var path = Path.Combine(dir, $"{DateTime.Now:yyyyMMdd_HHmmss_fff}.png");
+                            File.WriteAllBytes(path, pngBytes);
+                            logger.Info($"GalCompanion 截圖已存：{path}");
+                            recorded = true;
+                        }
+                        if (trilium != null && config.TriliumSendScreenshots && runningGame != null)
+                        {
+                            SendToTrilium(pngBytes, null);
+                            recorded = true;
+                        }
+                        if (!recorded)
+                        {
+                            // 沒有任何記錄目的地時退回剪貼簿，避免按了沒效果
+                            CopyToClipboard(bmp);
+                        }
                     }
 
                     if (config.PlaySound)
                     {
                         SystemSounds.Asterisk.Play();
-                    }
-
-                    if (config.TriliumSendScreenshots)
-                    {
-                        SendToTrilium(pngBytes, null);
                     }
                 }
             }
