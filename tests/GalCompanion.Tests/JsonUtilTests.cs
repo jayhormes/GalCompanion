@@ -30,6 +30,24 @@ namespace GalCompanion.Tests
             Assert.Equal("abc123", JsonUtil.ExtractString(json, "noteId"));
         }
 
+        // Escape 產出的值必須能被 ExtractString 還原（manifest 的 device 名等）
+        [Theory]
+        [InlineData("a\"b")]
+        [InlineData("a\\b")]
+        [InlineData("兩行\n文字")]
+        [InlineData("tab\there")]
+        public void ExtractString_roundtrips_escaped_values(string value)
+        {
+            var json = "{\"device\":\"" + JsonUtil.Escape(value) + "\"}";
+            Assert.Equal(value, JsonUtil.ExtractString(json, "device"));
+        }
+
+        [Fact]
+        public void ExtractString_unescapes_unicode_form()
+        {
+            Assert.Equal("a\u0001b", JsonUtil.ExtractString("{\"x\":\"a\\u0001b\"}", "x"));
+        }
+
         [Theory]
         [InlineData("{}")]
         [InlineData(null)]
