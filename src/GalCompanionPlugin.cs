@@ -95,10 +95,10 @@ namespace GalCompanion
                 {
                     return;
                 }
-                double x, y;
-                BubblePlacement.Center(bubble.ActualWidth, bubble.ActualHeight, WorkArea(), out x, out y);
-                bubble.Left = x;
-                bubble.Top = y;
+                double left, top;
+                BubblePlacement.Center(bubble.ActualWidth, bubble.ActualHeight, WorkArea(), out left, out top);
+                bubble.Left = left;
+                bubble.Top = top;
             });
         }
 
@@ -395,13 +395,13 @@ namespace GalCompanion
                         SavePluginSettings(config);
                     };
                     // 解像度やモニタ構成が変わると保存座標が画面外に出るので毎回検証する
-                    double x, y;
+                    double left, top;
                     BubblePlacement.Resolve(
                         config.BubbleX, config.BubbleY,
                         bubble.ActualWidth, bubble.ActualHeight,
-                        VirtualScreen(), WorkArea(), out x, out y);
-                    bubble.Left = x;
-                    bubble.Top = y;
+                        VirtualScreen(), WorkArea(), out left, out top);
+                    bubble.Left = left;
+                    bubble.Top = top;
                 }
                 bubble.Show();
             });
