@@ -10,6 +10,7 @@ Playnite 外掛。給 GalGame 玩家的遊玩伴侶：截圖筆記、（規劃�
 - 截圖歸檔路徑相容 ExtraMetadata 慣例：`<Playnite設定目錄>\ExtraMetadata\games\<GameId>\screenshots\`
 - 遊戲右鍵選單 → GalCompanion → 打開截圖資料夾
 - 成功時播系統提示音；沒有遊戲在跑時截到的圖存到 `ExtraMetadata\screenshots\unassigned\`
+- **Trilium 直送**（Phase 2）：每款遊戲對應一則 note，截圖自動 append（時間戳＋圖）；氣泡窗 📝 按鈕可補文字記錄（記漢化問題用）
 
 ## 安裝
 
@@ -35,6 +36,12 @@ Playnite 外掛。給 GalGame 玩家的遊玩伴侶：截圖筆記、（規劃�
 | `SaveToFile` | `true` | 截圖存 PNG |
 | `PlaySound` | `true` | 成功播提示音 |
 | `ScreenshotRoot` | 空 | 自訂截圖根目錄；留空用 Playnite 的 ExtraMetadata |
+| `TriliumEnabled` | `false` | 開啟 Trilium 直送 |
+| `TriliumUrl` | 空 | 例 `http://nas:8080`（需 Trilium ≥ 0.61 的 ETAPI） |
+| `TriliumToken` | 空 | Trilium → Options → ETAPI 產生 |
+| `TriliumParentNoteId` | 空 | 遊戲筆記的父 note id；第一次記錄時自動在其下建遊戲子 note |
+| `TriliumSendScreenshots` | `true` | 截圖自動 append；`false` 則只有 📝 手動記錄才送 |
+| `TriliumNoteBindings` | `{}` | gameId → noteId 對應，自動維護；想綁到既有 note 可手動填 |
 
 ## 開發
 
@@ -45,8 +52,8 @@ Playnite 外掛。給 GalGame 玩家的遊玩伴侶：截圖筆記、（規劃�
 
 ## Roadmap
 
-- Phase 2：Trilium ETAPI 直送 — 截圖＋文字 append 到該遊戲綁定的 note
-- Phase 3：存檔跨裝置同步（PC ↔ ROG Ally，NAS 中繼，OnGameStarting pull / OnGameStopped push）
+- ~~Phase 2：Trilium ETAPI 直送~~（已實作，待真機驗證）
+- Phase 3：存檔跨裝置同步（PC ↔ ROG Ally，NAS 中繼，OnGameStarting pull / OnGameStopped push；決策核心 SyncPlanner 已完成並有測試，傳輸層待接 rclone）
 - Phase 4：同步防呆（補推、衝突偵測）
 - Phase 5：存檔路徑學習模式（監控首次遊玩的檔案寫入自動生成規則）
 - Phase 6：掌機體驗（觸控浮動視窗、手把組合鍵）

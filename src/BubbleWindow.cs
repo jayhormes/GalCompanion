@@ -13,7 +13,7 @@ namespace GalCompanion
     {
         public event Action<double, double> Moved;
 
-        public BubbleWindow(Action onScreenshot)
+        public BubbleWindow(Action onScreenshot, Action onNote)
         {
             WindowStyle = WindowStyle.None;
             ResizeMode = ResizeMode.NoResize;
@@ -61,6 +61,23 @@ namespace GalCompanion
             var panel = new StackPanel { Orientation = Orientation.Horizontal };
             panel.Children.Add(grip);
             panel.Children.Add(button);
+
+            if (onNote != null)
+            {
+                var noteButton = new Button
+                {
+                    Content = "📝",
+                    FontSize = 22,
+                    Width = 52,
+                    Height = 52,
+                    Background = Brushes.Transparent,
+                    BorderThickness = new Thickness(0),
+                    Cursor = Cursors.Hand,
+                    Focusable = false
+                };
+                noteButton.Click += (s, e) => onNote();
+                panel.Children.Add(noteButton);
+            }
 
             Content = new Border
             {

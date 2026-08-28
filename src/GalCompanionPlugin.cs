@@ -8,6 +8,7 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Media;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media.Imaging;
@@ -23,6 +24,7 @@ namespace GalCompanion
         private GalCompanionConfig config;
         private HotkeyListener hotkey;
         private BubbleWindow bubble;
+        private TriliumService trilium;
         private Game runningGame;
 
         public GalCompanionPlugin(IPlayniteAPI api) : base(api)
@@ -36,6 +38,18 @@ namespace GalCompanion
             {
                 config = new GalCompanionConfig();
                 SavePluginSettings(config);
+            }
+            if (config.TriliumNoteBindings == null)
+            {
+                config.TriliumNoteBindings = new Dictionary<string, string>();
+            }
+
+            if (config.TriliumEnabled
+                && !string.IsNullOrWhiteSpace(config.TriliumUrl)
+                && !string.IsNullOrWhiteSpace(config.TriliumToken))
+            {
+                trilium = new TriliumService(new TriliumClient(config.TriliumUrl, config.TriliumToken));
+                logger.Info("GalCompanion Trilium 整合已啟用");
             }
 
             if (string.IsNullOrWhiteSpace(config.Hotkey))
@@ -63,6 +77,8 @@ namespace GalCompanion
             hotkey?.Dispose();
             hotkey = null;
             CloseBubble();
+            trilium?.Dispose();
+            trilium = null;
         }
 
         public override void OnGameStarted(OnGameStartedEventArgs args)
@@ -88,6 +104,8 @@ namespace GalCompanion
             hotkey?.Dispose();
             hotkey = null;
             CloseBubble();
+            trilium?.Dispose();
+            trilium = null;
             base.Dispose();
         }
 
@@ -114,7 +132,7 @@ namespace GalCompanion
             {
                 if (bubble == null)
                 {
-                    bubble = new BubbleWindow(TakeScreenshot);
+                    bubble = new BubbleWindow(TakeScreenshot, trilium == null ? (Action)null : OpenNoteInput);
                     bubble.Moved += (x, y) =>
                     {
                         config.BubbleX = x;
@@ -193,18 +211,30 @@ namespace GalCompanion
                         CopyToClipboard(bmp);
                     }
 
+                    byte[] pngBytes;
+                    using (var ms = new MemoryStream())
+                    {
+                        bmp.Save(ms, ImageFormat.Png);
+                        pngBytes = ms.ToArray();
+                    }
+
                     if (config.SaveToFile)
                     {
                         var dir = GetScreenshotDir(runningGame);
                         Directory.CreateDirectory(dir);
                         var path = Path.Combine(dir, $"{DateTime.Now:yyyyMMdd_HHmmss_fff}.png");
-                        bmp.Save(path, ImageFormat.Png);
+                        File.WriteAllBytes(path, pngBytes);
                         logger.Info($"GalCompanion 截圖已存：{path}");
                     }
 
                     if (config.PlaySound)
                     {
                         SystemSounds.Asterisk.Play();
+                    }
+
+                    if (config.TriliumSendScreenshots)
+                    {
+                        SendToTrilium(pngBytes, null);
                     }
                 }
             }
@@ -216,6 +246,54 @@ namespace GalCompanion
                     $"GalCompanion 截圖失敗：{e.Message}",
                     NotificationType.Error));
             }
+        }
+
+        private void OpenNoteInput()
+        {
+            RunOnUi(() =>
+            {
+                var win = new NoteInputWindow(runningGame?.Name);
+                if (win.ShowDialog() == true && !string.IsNullOrWhiteSpace(win.NoteText))
+                {
+                    SendToTrilium(null, win.NoteText);
+                }
+            });
+        }
+
+        // 背景送出，不擋 UI；失敗以 Playnite 通知回報
+        private void SendToTrilium(byte[] pngBytes, string text)
+        {
+            var service = trilium;
+            var game = runningGame;
+            if (service == null || game == null)
+            {
+                return;
+            }
+
+            Task.Run(async () =>
+            {
+                try
+                {
+                    var gameKey = game.Id.ToString();
+                    config.TriliumNoteBindings.TryGetValue(gameKey, out var bound);
+                    var noteId = await service.EnsureGameNoteAsync(config.TriliumParentNoteId, game.Name, bound);
+                    if (noteId != bound)
+                    {
+                        config.TriliumNoteBindings[gameKey] = noteId;
+                        RunOnUi(() => SavePluginSettings(config));
+                    }
+                    await service.AppendEntryAsync(noteId, DateTime.Now, pngBytes, text);
+                    logger.Info($"GalCompanion 已寫入 Trilium note {noteId}");
+                }
+                catch (Exception e)
+                {
+                    logger.Error(e, "GalCompanion Trilium 寫入失敗");
+                    RunOnUi(() => PlayniteApi.Notifications.Add(new NotificationMessage(
+                        "galcompanion-trilium-error",
+                        $"GalCompanion Trilium 寫入失敗：{e.Message}",
+                        NotificationType.Error)));
+                }
+            });
         }
 
         private static void CopyToClipboard(System.Drawing.Bitmap bmp)

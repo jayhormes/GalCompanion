@@ -18,6 +18,13 @@ namespace GalCompanion.Tests
             Assert.Null(config.BubbleX);
             Assert.Null(config.BubbleY);
             Assert.Equal(string.Empty, config.ScreenshotRoot);
+            Assert.False(config.TriliumEnabled);
+            Assert.Equal(string.Empty, config.TriliumUrl);
+            Assert.Equal(string.Empty, config.TriliumToken);
+            Assert.Equal(string.Empty, config.TriliumParentNoteId);
+            Assert.True(config.TriliumSendScreenshots);
+            Assert.NotNull(config.TriliumNoteBindings);
+            Assert.Empty(config.TriliumNoteBindings);
         }
 
         [Fact]
