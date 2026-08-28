@@ -39,6 +39,7 @@ namespace GalCompanion.Tests
         {
             var html = TriliumHtml.BuildEntry(Ts, null, null, null, "第一行\r\n第二行");
             Assert.Contains("第一行<br>第二行", html);
+        }
 
         [Fact]
         public void Entry_heading_carries_the_game_name()
