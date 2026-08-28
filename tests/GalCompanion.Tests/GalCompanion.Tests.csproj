@@ -11,6 +11,8 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <PackageReference Include="xunit" Version="2.9.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <!-- テスト実行時は SDK の dll が実際に要る（src 側は Playnite 本体が供給するので除外） -->
+    <PackageReference Include="PlayniteSDK" Version="6.16.0" />
   </ItemGroup>
 
   <ItemGroup>
