@@ -25,6 +25,13 @@ namespace GalCompanion.Tests
             Assert.True(config.TriliumSendScreenshots);
             Assert.NotNull(config.TriliumNoteBindings);
             Assert.Empty(config.TriliumNoteBindings);
+            Assert.False(config.SaveSyncEnabled);
+            Assert.Equal("rclone", config.RclonePath);
+            Assert.Equal(string.Empty, config.RcloneRemote);
+            Assert.Equal(3, config.SaveSyncToleranceSeconds);
+            Assert.True(config.SaveSyncKeepHistory);
+            Assert.NotNull(config.SaveRules);
+            Assert.Empty(config.SaveRules);
         }
 
         [Fact]

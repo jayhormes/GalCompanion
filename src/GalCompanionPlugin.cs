@@ -25,6 +25,7 @@ namespace GalCompanion
         private HotkeyListener hotkey;
         private BubbleWindow bubble;
         private TriliumService trilium;
+        private SaveSyncService saveSync;
         private Game runningGame;
 
         public GalCompanionPlugin(IPlayniteAPI api) : base(api)
@@ -43,6 +44,10 @@ namespace GalCompanion
             {
                 config.TriliumNoteBindings = new Dictionary<string, string>();
             }
+            if (config.SaveRules == null)
+            {
+                config.SaveRules = new Dictionary<string, SaveRule>();
+            }
 
             if (config.TriliumEnabled
                 && !string.IsNullOrWhiteSpace(config.TriliumUrl)
@@ -50,6 +55,20 @@ namespace GalCompanion
             {
                 trilium = new TriliumService(new TriliumClient(config.TriliumUrl, config.TriliumToken));
                 logger.Info("GalCompanion Trilium 整合已啟用");
+            }
+
+            if (config.SaveSyncEnabled && !string.IsNullOrWhiteSpace(config.RcloneRemote))
+            {
+                saveSync = new SaveSyncService(
+                    new RcloneRunner(config.RclonePath),
+                    new SyncStateStore(Path.Combine(GetPluginUserDataPath(), "syncstate")),
+                    config.RcloneRemote,
+                    Environment.MachineName,
+                    TimeSpan.FromSeconds(Math.Max(3, config.SaveSyncToleranceSeconds)),
+                    Path.Combine(GetPluginUserDataPath(), "syncwork"),
+                    config.SaveSyncKeepHistory);
+                logger.Info("GalCompanion 存檔同步已啟用");
+                Task.Run(() => CatchUpPush());
             }
 
             if (string.IsNullOrWhiteSpace(config.Hotkey))
@@ -81,6 +100,73 @@ namespace GalCompanion
             trilium = null;
         }
 
+        public override void OnGameStarting(OnGameStartingEventArgs args)
+        {
+            if (saveSync == null || args?.Game == null)
+            {
+                return;
+            }
+            var paths = ResolveRulePaths(args.Game);
+            if (paths == null)
+            {
+                return;
+            }
+
+            try
+            {
+                var gameId = args.Game.Id.ToString();
+                var plan = saveSync.Plan(gameId, paths);
+                switch (plan.Action)
+                {
+                    case SyncAction.Pull:
+                        saveSync.Pull(gameId, paths, plan.Remote);
+                        logger.Info($"GalCompanion 已拉取存檔：{args.Game.Name}（{plan.Remote.Device} @ {plan.Remote.TimestampUtc:u}）");
+                        break;
+                    case SyncAction.Push:
+                        // 上次漏推（當機/斷網），先補推再玩
+                        saveSync.Push(gameId, paths);
+                        logger.Info($"GalCompanion 啟動前補推存檔：{args.Game.Name}");
+                        break;
+                    case SyncAction.Conflict:
+                        HandleConflict(args, paths, plan);
+                        break;
+                }
+            }
+            catch (Exception e)
+            {
+                logger.Error(e, $"GalCompanion 存檔同步失敗：{args.Game.Name}");
+                var result = PlayniteApi.Dialogs.ShowMessage(
+                    $"「{args.Game.Name}」存檔同步失敗：{e.Message}\n\n仍要啟動遊戲嗎？（本地存檔可能不是最新）",
+                    "GalCompanion",
+                    MessageBoxButton.YesNo);
+                if (result == MessageBoxResult.No)
+                {
+                    args.CancelStartup = true;
+                }
+            }
+        }
+
+        private void HandleConflict(OnGameStartingEventArgs args, List<string> paths, SyncPlan plan)
+        {
+            var localText = plan.LocalMtimeUtc == null
+                ? "（無）"
+                : plan.LocalMtimeUtc.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
+            var text = $"「{args.Game.Name}」兩邊存檔都有變動：\n\n" +
+                       $"本機：{localText}（{Environment.MachineName}）\n" +
+                       $"NAS：{plan.Remote.TimestampUtc.ToLocalTime():yyyy-MM-dd HH:mm}（{plan.Remote.Device}）\n\n" +
+                       "是＝用 NAS 的（本機現況會先備份）\n否＝用本機的\n取消＝不啟動遊戲";
+            var result = PlayniteApi.Dialogs.ShowMessage(text, "GalCompanion 存檔衝突", MessageBoxButton.YesNoCancel);
+            if (result == MessageBoxResult.Yes)
+            {
+                saveSync.Pull(args.Game.Id.ToString(), paths, plan.Remote);
+            }
+            else if (result == MessageBoxResult.Cancel)
+            {
+                args.CancelStartup = true;
+            }
+            // 否：不動本機，遊戲結束照常推；NAS 舊版留在 history
+        }
+
         public override void OnGameStarted(OnGameStartedEventArgs args)
         {
             runningGame = args.Game;
@@ -96,6 +182,84 @@ namespace GalCompanion
             if (runningGame == null)
             {
                 HideBubble();
+            }
+            PushSaves(args.Game);
+        }
+
+        private List<string> ResolveRulePaths(Game game)
+        {
+            SaveRule rule;
+            if (!config.SaveRules.TryGetValue(game.Id.ToString(), out rule))
+            {
+                return null;
+            }
+            var paths = SavePathResolver.Resolve(rule.Paths, game.InstallDirectory);
+            return paths.Count == 0 ? null : paths;
+        }
+
+        private void PushSaves(Game game)
+        {
+            if (saveSync == null || game == null)
+            {
+                return;
+            }
+            var paths = ResolveRulePaths(game);
+            if (paths == null)
+            {
+                return;
+            }
+            var gameId = game.Id.ToString();
+            var gameName = game.Name;
+            Task.Run(() =>
+            {
+                try
+                {
+                    saveSync.Push(gameId, paths);
+                    logger.Info($"GalCompanion 存檔已推送：{gameName}");
+                }
+                catch (Exception e)
+                {
+                    logger.Error(e, $"GalCompanion 存檔推送失敗：{gameName}");
+                    RunOnUi(() => PlayniteApi.Notifications.Add(new NotificationMessage(
+                        "galcompanion-sync-push-error",
+                        $"GalCompanion 存檔推送失敗（{gameName}）：{e.Message}，下次啟動 Playnite 會自動補推",
+                        NotificationType.Error)));
+                }
+            });
+        }
+
+        // Playnite 啟動時掃一輪：上次沒推成功的（當機、斷網）補推
+        private void CatchUpPush()
+        {
+            foreach (var pair in config.SaveRules)
+            {
+                try
+                {
+                    if (!Guid.TryParse(pair.Key, out var gameGuid))
+                    {
+                        continue;
+                    }
+                    var game = PlayniteApi.Database.Games.Get(gameGuid);
+                    if (game == null)
+                    {
+                        continue;
+                    }
+                    var paths = SavePathResolver.Resolve(pair.Value.Paths, game.InstallDirectory);
+                    if (paths.Count == 0)
+                    {
+                        continue;
+                    }
+                    var plan = saveSync.Plan(pair.Key, paths);
+                    if (plan.Action == SyncAction.Push)
+                    {
+                        saveSync.Push(pair.Key, paths);
+                        logger.Info($"GalCompanion 補推存檔：{game.Name}");
+                    }
+                }
+                catch (Exception e)
+                {
+                    logger.Error(e, $"GalCompanion 補推失敗：{pair.Key}");
+                }
             }
         }
 
@@ -188,6 +352,55 @@ namespace GalCompanion
                     }
                 }
             };
+
+            if (saveSync != null && args.Games.Count == 1 && ResolveRulePaths(args.Games[0]) != null)
+            {
+                yield return new GameMenuItem
+                {
+                    Description = "立即推送存檔",
+                    MenuSection = "GalCompanion",
+                    Action = a => PushSaves(a.Games[0])
+                };
+                yield return new GameMenuItem
+                {
+                    Description = "從遠端拉取存檔（覆蓋本機，先備份）",
+                    MenuSection = "GalCompanion",
+                    Action = a => ManualPull(a.Games[0])
+                };
+            }
+        }
+
+        private void ManualPull(Game game)
+        {
+            var paths = ResolveRulePaths(game);
+            if (paths == null)
+            {
+                return;
+            }
+            try
+            {
+                var gameId = game.Id.ToString();
+                var plan = saveSync.Plan(gameId, paths);
+                if (plan.Remote == null)
+                {
+                    PlayniteApi.Dialogs.ShowMessage($"「{game.Name}」遠端沒有存檔。", "GalCompanion");
+                    return;
+                }
+                var result = PlayniteApi.Dialogs.ShowMessage(
+                    $"用 NAS 的存檔（{plan.Remote.Device} @ {plan.Remote.TimestampUtc.ToLocalTime():yyyy-MM-dd HH:mm}）覆蓋本機？\n本機現況會先備份。",
+                    "GalCompanion",
+                    MessageBoxButton.YesNo);
+                if (result == MessageBoxResult.Yes)
+                {
+                    saveSync.Pull(gameId, paths, plan.Remote);
+                    PlayniteApi.Dialogs.ShowMessage($"「{game.Name}」存檔已拉取。", "GalCompanion");
+                }
+            }
+            catch (Exception e)
+            {
+                logger.Error(e, $"GalCompanion 手動拉取失敗：{game.Name}");
+                PlayniteApi.Dialogs.ShowMessage($"拉取失敗：{e.Message}", "GalCompanion");
+            }
         }
 
         private string GetScreenshotDir(Game game)

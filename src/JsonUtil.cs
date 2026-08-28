@@ -46,5 +46,12 @@ namespace GalCompanion
                 "\"" + Regex.Escape(field) + "\"\\s*:\\s*\"([^\"]*)\"");
             return m.Success ? m.Groups[1].Value : null;
         }
+
+        public static int? ExtractInt(string json, string field)
+        {
+            var m = Regex.Match(json ?? string.Empty,
+                "\"" + Regex.Escape(field) + "\"\\s*:\\s*(-?\\d+)");
+            return m.Success && int.TryParse(m.Groups[1].Value, out var value) ? value : (int?)null;
+        }
     }
 }

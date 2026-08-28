@@ -45,6 +45,23 @@ namespace GalCompanion
         // gameId → noteId，自動維護
         public Dictionary<string, string> TriliumNoteBindings { get; set; } = new Dictionary<string, string>();
 
+        public bool SaveSyncEnabled { get; set; } = false;
+
+        // rclone.exe 路徑；在 PATH 裡就留預設
+        public string RclonePath { get; set; } = "rclone";
+
+        // rclone remote 加根目錄，例 "nas:playnite-saves"
+        public string RcloneRemote { get; set; } = string.Empty;
+
+        // zip 時間戳解析度 2 秒，容差必須 ≥ 3
+        public int SaveSyncToleranceSeconds { get; set; } = 3;
+
+        // NAS 端每次推送另存 history/*.zip
+        public bool SaveSyncKeepHistory { get; set; } = true;
+
+        // gameId → 存檔路徑規則
+        public Dictionary<string, SaveRule> SaveRules { get; set; } = new Dictionary<string, SaveRule>();
+
         public static double ClampOpacity(double value)
         {
             if (value < 0.1)
