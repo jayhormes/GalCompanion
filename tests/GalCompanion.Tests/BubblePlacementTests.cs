@@ -83,8 +83,8 @@ namespace GalCompanion.Tests
         }
 
         [Theory]
-        [InlineData(300, null)]
-        [InlineData(null, 200)]
+        [InlineData(300d, null)]
+        [InlineData(null, 200d)]
         public void Resolve_centers_when_only_one_axis_was_saved(double? savedX, double? savedY)
         {
             double x, y;
