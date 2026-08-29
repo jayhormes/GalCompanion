@@ -28,6 +28,7 @@ namespace GalCompanion
         private string triliumImpressionsTitle = TriliumTitles.DefaultImpressions;
         private string triliumTranslationTitle = "翻譯問題";
         private bool saveSyncEnabled;
+        private bool playtimeSyncEnabled;
         private string rclonePath = "rclone";
         private string rcloneRemote = string.Empty;
         private int saveSyncToleranceSeconds = 3;
@@ -171,6 +172,14 @@ namespace GalCompanion
             set => SetValue(ref triliumTranslationTitle, value);
         }
 
+        // 遊玩時數同步。走同一個 rclone remote，但機制跟存檔不同：
+        // 每台只寫自己的檔案，讀的時候把所有機器的檔案取聯集，不會有衝突要問
+        public bool PlaytimeSyncEnabled
+        {
+            get => playtimeSyncEnabled;
+            set => SetValue(ref playtimeSyncEnabled, value);
+        }
+
         public bool SaveSyncEnabled
         {
             get => saveSyncEnabled;
@@ -251,6 +260,7 @@ namespace GalCompanion
                 TriliumImpressionsTitle = TriliumImpressionsTitle,
                 TriliumTranslationTitle = TriliumTranslationTitle,
                 SaveSyncEnabled = SaveSyncEnabled,
+                PlaytimeSyncEnabled = PlaytimeSyncEnabled,
                 RclonePath = RclonePath,
                 RcloneRemote = RcloneRemote,
                 SaveSyncToleranceSeconds = SaveSyncToleranceSeconds,

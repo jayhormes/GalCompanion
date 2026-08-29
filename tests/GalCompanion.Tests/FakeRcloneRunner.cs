@@ -28,5 +28,20 @@ namespace GalCompanion.Tests
             Directory.CreateDirectory(Path.GetDirectoryName(localPath));
             File.WriteAllBytes(localPath, bytes);
         }
+
+        public List<string> ListFiles(string remoteDir)
+        {
+            var prefix = remoteDir.TrimEnd('/') + "/";
+            var names = new List<string>();
+            foreach (var key in Files.Keys)
+            {
+                if (key.StartsWith(prefix, StringComparison.Ordinal)
+                    && key.IndexOf('/', prefix.Length) < 0)
+                {
+                    names.Add(key.Substring(prefix.Length));
+                }
+            }
+            return names;
+        }
     }
 }

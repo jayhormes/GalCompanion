@@ -14,7 +14,42 @@ Playnite 外掛。給 GalGame 玩家的遊玩伴侶：截圖筆記、（規劃�
 - 遊戲右鍵選單 → GalCompanion → 打開截圖資料夾
 - 成功時播系統提示音；沒有遊戲在跑時截到的圖存到 `ExtraMetadata\screenshots\unassigned\`
 - **Trilium 直送**（Phase 2）：用 Trilium 內建的日期筆記（Journal/年/月/日）定位當天，底下**每款遊戲一則**「<遊戲名> 遊戲心得」，📷 寫這裡；再下一層的「翻譯問題」給 📝
+- **遊玩時間**（Phase 4）：每次玩完記一筆（開始時間＋長度），側邊欄有熱力圖（GitHub 草那種）與玩最久排行。Playnite 的時數取「紀錄總和」與現有值的**大者**，不會蓋掉 Steam 匯入的時間
+- **時數跨裝置同步**（Phase 4）：走同一個 rclone remote，但**每台機器只寫自己的檔案**，讀的時候把所有機器的檔案取聯集 —— 所以兩台玩同一款也不會互相蓋掉，也不需要問你要留哪邊
 - **存檔跨裝置同步**（Phase 3）：啟動前自動判定拉/推/衝突、結束後自動推上 NAS、當機漏推下次啟動補推；衝突一律跳對話框不自動覆蓋；遊戲右鍵選單可手動推/拉
+
+## 遊玩時間與跨裝置同步
+
+`OnGameStarted` / `OnGameStopped` 各記一筆到 `ExtensionsData\<id>\sessions.tsv`，一行一次遊玩：
+
+```
+#galcompanion-sessions	1
+<gameId>	2026-08-30T01:46:24Z	5400	JAY-PC	モザイクの天使
+```
+
+**為什麼是逐次紀錄而不是累計值**：累計值合併不了 —— 兩台各自加，你無從得知重疊了多少。事件可以,取聯集就好(以「遊戲＋開始時間」去重)。
+
+同步的形狀:
+
+```
+nas:playnite/playtime/
+  jay-pc.tsv     ← 只有 PC 會寫
+  rog-ally.tsv   ← 只有 Ally 會寫
+```
+
+每台只寫自己那份,讀的時候把全部檔案取聯集。**寫入永遠不會衝突**,不需要問你要留哪一邊。哪台被重灌了,下次 pull 就從另一台的檔案補回來。
+
+時機:
+
+| 時候 | 動作 |
+|---|---|
+| Playnite 啟動 | pull（合併全部）→ 套用時數 → push |
+| 遊戲結束 | 只 push（另一台馬上接手時看得到） |
+| Playnite 關閉 | 只 push |
+
+拉取只在啟動時做 —— 玩到一半把別台的紀錄混進來沒有意義,而且會跟正在跑的 session 打架。
+
+Playnite 的 `Playtime` 取 `max(現有值, 紀錄總和)`。Steam/GOG 匯入的、沒有 session 撐著的時數不會被歸零。
 
 ## LunaImport — 把 LunaTranslator 的遊玩時間搬進 Playnite
 

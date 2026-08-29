@@ -47,6 +47,11 @@ namespace GalCompanion
         // 入力欄の「附上截圖」。セッション中は前回の選択を引き継ぐ
         private bool attachScreenshot = true;
 
+        // 遊んだ記録。累計ではなく 1 回ぶんを貯めるので、二台ぶんを和集合で合流できる
+        private SessionStore sessions;
+        private PlaytimeSyncService playtimeSync;
+        private readonly Dictionary<Guid, DateTime> sessionStarts = new Dictionary<Guid, DateTime>();
+
         public GalCompanionPlugin(IPlayniteAPI api) : base(api)
         {
             // Load/SavePluginSettings は ExtensionsData/<id>/config.json を読み書きするので、
@@ -65,6 +70,8 @@ namespace GalCompanion
                 config?.CaptureWithNote == true
                 && trilium != null
                 && (target != TriliumTarget.Impressions || config.TriliumSendScreenshots));
+
+            sessions = new SessionStore(GetPluginUserDataPath());
 
             Properties = new GenericPluginProperties { HasSettings = true };
         }
@@ -87,6 +94,7 @@ namespace GalCompanion
             trilium?.Dispose();
             trilium = null;
             saveSync = null;
+            playtimeSync = null;
             lock (triliumNoteCache)
             {
                 triliumNoteCache.Clear();
@@ -94,6 +102,7 @@ namespace GalCompanion
 
             InitTrilium();
             InitSaveSync();
+            InitPlaytimeSync();
             InitHotkey();
 
             // 透明度などは作り直さないと反映されないので、表示中なら作り直す
@@ -146,7 +155,11 @@ namespace GalCompanion
         {
             InitTrilium();
             InitSaveSync();
+            InitPlaytimeSync();
             InitHotkey();
+
+            // 起動時にだけ引き込む。遊んでいる最中に他機のぶんを混ぜても意味がない
+            Task.Run(() => SyncPlaytime(pull: true));
         }
 
         private void InitTrilium()
@@ -162,6 +175,20 @@ namespace GalCompanion
                     config.TriliumTranslationTitle,
                     config.TriliumNotePerGame);
                 logger.Info("GalCompanion Trilium 整合已啟用");
+            }
+        }
+
+        private void InitPlaytimeSync()
+        {
+            if (config.PlaytimeSyncEnabled && !string.IsNullOrWhiteSpace(config.RcloneRemote))
+            {
+                playtimeSync = new PlaytimeSyncService(
+                    new RcloneRunner(config.RclonePath),
+                    sessions,
+                    config.RcloneRemote,
+                    DeviceName(),
+                    Path.Combine(GetPluginUserDataPath(), "syncwork"));
+                logger.Info("GalCompanion 遊玩時數同步已啟用");
             }
         }
 
@@ -206,6 +233,7 @@ namespace GalCompanion
 
         public override void OnApplicationStopped(OnApplicationStoppedEventArgs args)
         {
+            SyncPlaytime(pull: false);
             hotkey?.Dispose();
             hotkey = null;
             CloseBubble();
@@ -283,6 +311,13 @@ namespace GalCompanion
         public override void OnGameStarted(OnGameStartedEventArgs args)
         {
             runningGame = args.Game;
+            if (args.Game != null)
+            {
+                lock (sessionStarts)
+                {
+                    sessionStarts[args.Game.Id] = DateTime.UtcNow;
+                }
+            }
             ShowBubble();
         }
 
@@ -296,7 +331,147 @@ namespace GalCompanion
             {
                 HideBubble();
             }
+            RecordSession(args);
             PushSaves(args.Game);
+            // 遊び終わりは押すだけ。もう一台がすぐ続きを遊べるように
+            Task.Run(() => SyncPlaytime(pull: false));
+        }
+
+        /// <summary>遊び終わりを 1 行足す。開始時刻は Playnite が渡す長さから逆算する。</summary>
+        private void RecordSession(OnGameStoppedEventArgs args)
+        {
+            if (args?.Game == null)
+            {
+                return;
+            }
+
+            var seconds = (int)Math.Min(args.ElapsedSeconds, int.MaxValue);
+            if (seconds <= 0)
+            {
+                return;
+            }
+
+            DateTime start;
+            lock (sessionStarts)
+            {
+                if (!sessionStarts.TryGetValue(args.Game.Id, out start))
+                {
+                    // 起動を取り逃したときは長さから逆算する
+                    start = DateTime.UtcNow.AddSeconds(-seconds);
+                }
+                sessionStarts.Remove(args.Game.Id);
+            }
+
+            try
+            {
+                sessions.Append(new PlaySession
+                {
+                    GameId = args.Game.Id,
+                    StartUtc = SessionLog.Truncate(start),
+                    Seconds = seconds,
+                    Device = DeviceName(),
+                    GameName = args.Game.Name,
+                });
+            }
+            catch (Exception e)
+            {
+                logger.Error(e, "GalCompanion 遊玩紀錄寫入失敗");
+            }
+        }
+
+        /// <summary>
+        /// 記録を合流させて Playnite の時数に反映する。
+        /// 引き込みは起動時だけ。遊び終わりは押すだけにして、他機の変更を途中で混ぜない。
+        /// </summary>
+        private void SyncPlaytime(bool pull)
+        {
+            var service = playtimeSync;
+            try
+            {
+                if (service == null)
+                {
+                    // 同期していなくても、手元の記録は時数に反映しておく
+                    if (pull)
+                    {
+                        ApplyPlaytime(sessions.Load());
+                    }
+                    return;
+                }
+
+                if (pull)
+                {
+                    ApplyPlaytime(service.Sync());
+                }
+                else
+                {
+                    service.Push();
+                }
+            }
+            catch (Exception e)
+            {
+                logger.Error(e, "GalCompanion 遊玩時數同步失敗");
+                if (pull)
+                {
+                    RunOnUi(() => PlayniteApi.Notifications.Add(new NotificationMessage(
+                        "galcompanion-playtime-sync",
+                        $"GalCompanion 遊玩時數同步失敗：{e.Message}",
+                        NotificationType.Error)));
+                }
+            }
+        }
+
+        /// <summary>記録の合計が Playnite の値より大きいゲームだけ書き戻す。</summary>
+        private void ApplyPlaytime(List<PlaySession> merged)
+        {
+            var totals = SessionLog.TotalsByGame(merged);
+            var updated = 0;
+
+            foreach (var pair in totals)
+            {
+                var game = PlayniteApi.Database.Games.Get(pair.Key);
+                if (game == null || !PlaytimeApplier.NeedsUpdate(game.Playtime, pair.Value))
+                {
+                    continue;
+                }
+                game.Playtime = PlaytimeApplier.Resolve(game.Playtime, pair.Value);
+                PlayniteApi.Database.Games.Update(game);
+                updated++;
+            }
+
+            if (updated > 0)
+            {
+                logger.Info($"GalCompanion 依遊玩紀錄更新了 {updated} 款的時數");
+            }
+        }
+
+        public override IEnumerable<SidebarItem> GetSidebarItems()
+        {
+            yield return new SidebarItem
+            {
+                Title = "GalCompanion 遊玩時間",
+                Type = SiderbarItemType.View,
+                // Icon に string を渡すとリソースキー／パスとして解釈されるので、要素を直接置く
+                Icon = new TextBlock
+                {
+                    Text = "\U0001F4CA",
+                    FontSize = 20,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                },
+                Opened = () => new PlaytimeView(sessions.Load()),
+            };
+        }
+
+        internal static string DeviceName()
+        {
+            try
+            {
+                return Environment.MachineName;
+            }
+            catch
+            {
+                return string.Empty;
+            }
         }
 
         private List<string> ResolveRulePaths(Game game)

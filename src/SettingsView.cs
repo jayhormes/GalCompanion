@@ -61,6 +61,14 @@ namespace GalCompanion
             panel.Children.Add(CheckRow("截圖自動送 Trilium", "Settings.TriliumSendScreenshots",
                 "關掉的話只有 📝 手動記錄會送。"));
 
+            panel.Children.Add(Header("遊玩時間"));
+            panel.Children.Add(Note(
+                "每次玩完記一筆（開始時間＋長度），Playnite 的時數取「紀錄總和」與現有值的大者。"
+                + "側邊欄的 GalCompanion 圖示可以看熱力圖。"));
+            panel.Children.Add(CheckRow("同步遊玩紀錄到 rclone remote", "Settings.PlaytimeSyncEnabled",
+                "用下面「存檔同步」那組 rclone 設定。每台機器只寫自己的檔案，讀的時候全部取聯集，"
+                + "所以兩台玩同一款也不會互相蓋掉。"));
+
             panel.Children.Add(Header("存檔同步"));
             panel.Children.Add(CheckRow("啟用存檔同步", "Settings.SaveSyncEnabled", null));
             panel.Children.Add(TextRow("rclone 路徑", "Settings.RclonePath", "在 PATH 裡就留 rclone。"));

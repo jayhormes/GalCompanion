@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 
 namespace GalCompanion
@@ -11,6 +12,9 @@ namespace GalCompanion
         void UploadFile(string localPath, string remotePath);
 
         void DownloadFile(string remotePath, string localPath);
+
+        // 遠端目錄下的檔名（不遞迴）；目錄不存在回空清單
+        List<string> ListFiles(string remoteDir);
     }
 
     internal sealed class RcloneRunner : IRcloneRunner
@@ -46,6 +50,30 @@ namespace GalCompanion
         public void DownloadFile(string remotePath, string localPath)
         {
             RunChecked("copyto " + Quote(remotePath) + " " + Quote(localPath));
+        }
+
+        public List<string> ListFiles(string remoteDir)
+        {
+            var result = Run("lsf --files-only " + Quote(remoteDir));
+            var names = new List<string>();
+            if (result.ExitCode == 3 || result.ExitCode == 4)
+            {
+                return names;
+            }
+            if (result.ExitCode != 0)
+            {
+                throw new InvalidOperationException(
+                    $"rclone lsf 失敗（exit {result.ExitCode}）：{result.StdErr}");
+            }
+            foreach (var line in (result.StdOut ?? string.Empty).Split('\n'))
+            {
+                var name = line.Trim().TrimEnd('/');
+                if (name.Length > 0)
+                {
+                    names.Add(name);
+                }
+            }
+            return names;
         }
 
         internal static string Quote(string s)
