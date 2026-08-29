@@ -36,7 +36,7 @@ namespace LunaImport.Tests
         [Fact]
         public void ParseGame_reads_the_fields_and_both_action_paths()
         {
-            var game = PlayniteLibrary.ParseGame(JObject.Parse(Original), "x.json");
+            var game = PlayniteLibrary.ParseGame(Json.Parse(Original), "x.json");
 
             Assert.Equal("モザイクの天使", game.Name);
             Assert.Equal(@"D:\Games\Mosaic", game.InstallDirectory);
@@ -47,13 +47,13 @@ namespace LunaImport.Tests
         [Fact]
         public void ParseGame_rejects_a_file_without_an_id()
         {
-            Assert.Null(PlayniteLibrary.ParseGame(JObject.Parse("{\"Name\":\"x\"}"), "x.json"));
+            Assert.Null(PlayniteLibrary.ParseGame(Json.Parse("{\"Name\":\"x\"}"), "x.json"));
         }
 
         [Fact]
         public void Patch_sets_playtime_and_leaves_everything_else_alone()
         {
-            var patched = JObject.Parse(
+            var patched = Json.Parse(
                 PlayniteLibrary.Patch(Original, Entry(7200, 3, new DateTime(2026, 1, 5, 21, 0, 0))));
 
             Assert.Equal(7200, (long)patched["Playtime"]);
@@ -65,7 +65,7 @@ namespace LunaImport.Tests
         [Fact]
         public void Patch_raises_play_count_to_the_session_count()
         {
-            var patched = JObject.Parse(PlayniteLibrary.Patch(Original, Entry(60, 3, null)));
+            var patched = Json.Parse(PlayniteLibrary.Patch(Original, Entry(60, 3, null)));
             Assert.Equal(3, (int)patched["PlayCount"]);
         }
 
@@ -73,7 +73,7 @@ namespace LunaImport.Tests
         public void Patch_never_lowers_an_existing_play_count()
         {
             var withCount = Original.Replace("\"PlayCount\": 0", "\"PlayCount\": 50");
-            var patched = JObject.Parse(PlayniteLibrary.Patch(withCount, Entry(60, 3, null)));
+            var patched = Json.Parse(PlayniteLibrary.Patch(withCount, Entry(60, 3, null)));
 
             Assert.Equal(50, (int)patched["PlayCount"]);
         }
@@ -83,16 +83,30 @@ namespace LunaImport.Tests
         {
             var withActivity = Original.Replace(
                 "\"Hidden\": false", "\"LastActivity\": \"2027-01-01T00:00:00.000Z\"");
-            var patched = JObject.Parse(
+            var patched = Json.Parse(
                 PlayniteLibrary.Patch(withActivity, Entry(60, 1, new DateTime(2026, 1, 5, 21, 0, 0))));
 
             Assert.StartsWith("2027-01-01", (string)patched["LastActivity"]);
         }
 
+        // Newtonsoft は既定で ISO 文字列を DateTime に変換してしまい、
+        // 書き戻すときに書式もタイムゾーンも変わる。触っていない日付は原文のまま残すこと
+        [Fact]
+        public void Patch_leaves_other_date_fields_byte_for_byte()
+        {
+            var withDates = Original.Replace("\"Hidden\": false",
+                "\"Added\": \"2024-03-04T05:06:07.0000000Z\", \"Modified\": \"2025-11-12T13:14:15Z\"");
+
+            var patched = PlayniteLibrary.Patch(withDates, Entry(60, 1, null));
+
+            Assert.Contains("\"2024-03-04T05:06:07.0000000Z\"", patched);
+            Assert.Contains("\"2025-11-12T13:14:15Z\"", patched);
+        }
+
         [Fact]
         public void Patch_fills_in_a_missing_last_activity()
         {
-            var patched = JObject.Parse(
+            var patched = Json.Parse(
                 PlayniteLibrary.Patch(Original, Entry(60, 1, new DateTime(2026, 1, 5, 21, 0, 0, DateTimeKind.Utc))));
 
             Assert.StartsWith("2026-01-05T21:00:00", (string)patched["LastActivity"]);
@@ -122,7 +136,7 @@ namespace LunaImport.Tests
         [Fact]
         public void Creates_the_file_shape_game_activity_expects()
         {
-            var json = JObject.Parse(GameActivityWriter.Merge(
+            var json = Json.Parse(GameActivityWriter.Merge(
                 null, Entry(new DateTime(2026, 1, 2, 20, 0, 0, DateTimeKind.Utc))));
 
             Assert.Equal("22222222-2222-2222-2222-222222222222", (string)json["Id"]);
@@ -140,7 +154,7 @@ namespace LunaImport.Tests
             var existing = @"{""Id"":""22222222-2222-2222-2222-222222222222"",""Name"":""既存"",
                 ""Items"":[{""DateSession"":""2025-12-01T10:00:00.000Z"",""ElapsedSeconds"":60}]}";
 
-            var json = JObject.Parse(GameActivityWriter.Merge(
+            var json = Json.Parse(GameActivityWriter.Merge(
                 existing, Entry(new DateTime(2026, 1, 2, 20, 0, 0, DateTimeKind.Utc))));
 
             Assert.Equal(2, ((JArray)json["Items"]).Count);
@@ -157,13 +171,13 @@ namespace LunaImport.Tests
             var once = GameActivityWriter.Merge(null, entry);
             var twice = GameActivityWriter.Merge(once, entry);
 
-            Assert.Equal(2, ((JArray)JObject.Parse(twice)["Items"]).Count);
+            Assert.Equal(2, ((JArray)Json.Parse(twice)["Items"]).Count);
         }
 
         [Fact]
         public void Sessions_are_written_oldest_first()
         {
-            var json = JObject.Parse(GameActivityWriter.Merge(null, Entry(
+            var json = Json.Parse(GameActivityWriter.Merge(null, Entry(
                 new DateTime(2026, 3, 1, 20, 0, 0, DateTimeKind.Utc),
                 new DateTime(2026, 1, 1, 20, 0, 0, DateTimeKind.Utc))));
 

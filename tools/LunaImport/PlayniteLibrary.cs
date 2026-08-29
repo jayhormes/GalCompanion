@@ -82,7 +82,7 @@ namespace LunaImport
                 JObject json;
                 try
                 {
-                    json = JObject.Parse(File.ReadAllText(file));
+                    json = Json.Parse(File.ReadAllText(file));
                 }
                 catch (JsonException)
                 {
@@ -113,7 +113,7 @@ namespace LunaImport
         /// <summary>Playtime と、必要なら最終プレイ日時・回数を書き戻す。</summary>
         internal static string Patch(string original, PlanEntry entry)
         {
-            var json = JObject.Parse(original);
+            var json = Json.Parse(original);
             json["Playtime"] = entry.NewPlaytime;
 
             if (entry.SessionCount > 0)

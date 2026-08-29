@@ -54,7 +54,7 @@ namespace LunaImport
         {
             var root = string.IsNullOrWhiteSpace(existingJson)
                 ? new JObject()
-                : JObject.Parse(existingJson);
+                : Json.Parse(existingJson);
 
             root["Id"] = entry.Playnite.Id.ToString();
             if (string.IsNullOrWhiteSpace((string)root["Name"]))
