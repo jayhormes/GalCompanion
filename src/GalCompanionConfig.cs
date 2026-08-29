@@ -24,7 +24,7 @@ namespace GalCompanion
         private string triliumParentNoteId = string.Empty;
         private bool triliumSendScreenshots = true;
         private string triliumDateFormat = "yyyy.MM.dd";
-        private string triliumImpressionsTitle = "遊戲筆記";
+        private string triliumImpressionsTitle = TriliumTitles.DefaultImpressions;
         private string triliumTranslationTitle = "翻譯問題";
         private bool saveSyncEnabled;
         private string rclonePath = "rclone";

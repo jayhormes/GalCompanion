@@ -6,7 +6,7 @@ namespace GalCompanion
 {
     internal enum TriliumTarget
     {
-        // 📷 截圖 → 當天的遊戲心得
+        // 📷 截圖 → 當天的「遊戲名 遊戲心得」
         Impressions,
         // 📝 文字 → 心得底下的翻譯問題
         Translation
@@ -16,16 +16,31 @@ namespace GalCompanion
     {
         private readonly TriliumClient client;
         private readonly string dateFormat;
-        private readonly string impressionsTitle;
-        private readonly string translationTitle;
+        private readonly string impressionsTemplate;
+        private readonly string translationTemplate;
 
         public TriliumService(TriliumClient client, string dateFormat,
             string impressionsTitle, string translationTitle)
         {
             this.client = client;
             this.dateFormat = string.IsNullOrWhiteSpace(dateFormat) ? "yyyy.MM.dd" : dateFormat;
-            this.impressionsTitle = string.IsNullOrWhiteSpace(impressionsTitle) ? "遊戲筆記" : impressionsTitle;
-            this.translationTitle = string.IsNullOrWhiteSpace(translationTitle) ? "翻譯問題" : translationTitle;
+            this.impressionsTemplate = string.IsNullOrWhiteSpace(impressionsTitle)
+                ? TriliumTitles.DefaultImpressions : impressionsTitle;
+            this.translationTemplate = string.IsNullOrWhiteSpace(translationTitle)
+                ? TriliumTitles.DefaultTranslation : translationTitle;
+        }
+
+        /// <summary>心得ノートをゲームごとに分ける設定か。エントリ見出しの重複を避けるのに使う。</summary>
+        public bool ImpressionsArePerGame => TriliumTitles.IsPerGame(impressionsTemplate);
+
+        public string ImpressionsTitleFor(string gameName)
+        {
+            return TriliumTitles.Format(impressionsTemplate, gameName, TriliumTitles.DefaultImpressions);
+        }
+
+        public string TranslationTitleFor(string gameName)
+        {
+            return TriliumTitles.Format(translationTemplate, gameName, TriliumTitles.DefaultTranslation);
         }
 
         public string FormatDate(DateTime date)
@@ -99,19 +114,21 @@ namespace GalCompanion
         }
 
         /// <summary>
-        /// 日期 → 遊戲心得 → 翻譯問題 を解決して、書き込み先の noteId を返す。
+        /// 日期 →「ゲーム名 遊戲心得」→「翻譯問題」を解決して、書き込み先の noteId を返す。
         /// </summary>
         public async Task<string> ResolveTargetNoteAsync(
-            DateTime date, string fallbackParentNoteId, TriliumTarget target)
+            DateTime date, string fallbackParentNoteId, TriliumTarget target, string gameName)
         {
             var dateNoteId = await EnsureDateNoteAsync(date, fallbackParentNoteId).ConfigureAwait(false);
-            var impressionsId = await EnsureChildNoteAsync(dateNoteId, impressionsTitle).ConfigureAwait(false);
+            var impressionsId = await EnsureChildNoteAsync(
+                dateNoteId, ImpressionsTitleFor(gameName)).ConfigureAwait(false);
 
             if (target == TriliumTarget.Impressions)
             {
                 return impressionsId;
             }
-            return await EnsureChildNoteAsync(impressionsId, translationTitle).ConfigureAwait(false);
+            return await EnsureChildNoteAsync(
+                impressionsId, TranslationTitleFor(gameName)).ConfigureAwait(false);
         }
 
         // pngBytes 或 text 至少一個；圖先上傳成 attachment，再把整段 entry 接到 note 尾端

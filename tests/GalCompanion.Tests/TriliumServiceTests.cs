@@ -10,10 +10,18 @@ namespace GalCompanion.Tests
         private static readonly DateTime Ts = new DateTime(2026, 8, 28, 21, 30, 0);
         private const string Base = "http://nas:8080";
 
+        // 従来どおりの固定標題（全タイトル共通の 1 枚）
         private static TriliumService Service(FakeHttpHandler handler)
         {
             return new TriliumService(
                 new TriliumClient(Base, "t", handler), "yyyy.MM.dd", "遊戲心得", "翻譯問題");
+        }
+
+        // ゲームごとに分ける標題
+        private static TriliumService PerGameService(FakeHttpHandler handler)
+        {
+            return new TriliumService(
+                new TriliumClient(Base, "t", handler), "yyyy.MM.dd", "{game} 遊戲心得", "翻譯問題");
         }
 
         // --- 日付ノートの選別（Trilium の全文検索は曖昧一致） ---
@@ -177,7 +185,7 @@ namespace GalCompanion.Tests
 
             using (var service = Service(handler))
             {
-                var noteId = await service.ResolveTargetNoteAsync(Ts, "p", TriliumTarget.Impressions);
+                var noteId = await service.ResolveTargetNoteAsync(Ts, "p", TriliumTarget.Impressions, null);
                 Assert.Equal("imp", noteId);
             }
         }
@@ -194,7 +202,7 @@ namespace GalCompanion.Tests
 
             using (var service = Service(handler))
             {
-                var noteId = await service.ResolveTargetNoteAsync(Ts, "p", TriliumTarget.Translation);
+                var noteId = await service.ResolveTargetNoteAsync(Ts, "p", TriliumTarget.Translation, null);
                 Assert.Equal("tr", noteId);
             }
         }
@@ -213,10 +221,78 @@ namespace GalCompanion.Tests
 
             using (var service = Service(handler))
             {
-                var noteId = await service.ResolveTargetNoteAsync(Ts, "parent", TriliumTarget.Translation);
+                var noteId = await service.ResolveTargetNoteAsync(Ts, "parent", TriliumTarget.Translation, null);
                 Assert.Equal("tr1", noteId);
                 Assert.Contains("\"parentNoteId\":\"date1\"", handler.Requests[4].Body);
                 Assert.Contains("\"parentNoteId\":\"imp1\"", handler.Requests[6].Body);
+            }
+        }
+
+        [Fact]
+        public async Task ResolveTarget_puts_each_game_in_its_own_note()
+        {
+            var handler = new FakeHttpHandler();
+            handler.Enqueue("{\"noteId\":\"diary1\",\"title\":\"29 - 週六\"}");
+            handler.Enqueue("{\"noteId\":\"diary1\",\"childNoteIds\":[\"other\"]}");
+            handler.Enqueue("{\"noteId\":\"other\",\"title\":\"コトネイロ 遊戲心得\"}");
+            handler.Enqueue("{\"note\":{\"noteId\":\"imp2\"}}");
+
+            using (var service = PerGameService(handler))
+            {
+                var noteId = await service.ResolveTargetNoteAsync(
+                    Ts, "p", TriliumTarget.Impressions, "モザイクの天使");
+
+                // 別タイトルの心得ノートは使い回さず、自分の分を作る
+                Assert.Equal("imp2", noteId);
+                Assert.Contains("\"title\":\"モザイクの天使 遊戲心得\"", handler.Requests[3].Body);
+                Assert.Contains("\"parentNoteId\":\"diary1\"", handler.Requests[3].Body);
+            }
+        }
+
+        [Fact]
+        public async Task ResolveTarget_reuses_the_note_of_the_same_game()
+        {
+            var handler = new FakeHttpHandler();
+            handler.Enqueue("{\"noteId\":\"diary1\",\"title\":\"29 - 週六\"}");
+            handler.Enqueue("{\"noteId\":\"diary1\",\"childNoteIds\":[\"imp\"]}");
+            handler.Enqueue("{\"noteId\":\"imp\",\"title\":\"モザイクの天使 遊戲心得\"}");
+
+            using (var service = PerGameService(handler))
+            {
+                Assert.Equal("imp", await service.ResolveTargetNoteAsync(
+                    Ts, "p", TriliumTarget.Impressions, "モザイクの天使"));
+            }
+        }
+
+        [Fact]
+        public async Task ResolveTarget_without_a_game_name_falls_back_to_a_plain_title()
+        {
+            var handler = new FakeHttpHandler();
+            handler.Enqueue("{\"noteId\":\"diary1\",\"title\":\"29 - 週六\"}");
+            handler.Enqueue("{\"noteId\":\"diary1\",\"childNoteIds\":[]}");
+            handler.Enqueue("{\"note\":{\"noteId\":\"imp1\"}}");
+
+            using (var service = PerGameService(handler))
+            {
+                await service.ResolveTargetNoteAsync(Ts, "p", TriliumTarget.Impressions, "  ");
+
+                Assert.Contains("\"title\":\"遊戲心得\"", handler.Requests[2].Body);
+            }
+        }
+
+        [Fact]
+        public void Per_game_mode_is_reported_from_the_template()
+        {
+            var handler = new FakeHttpHandler();
+            using (var perGame = PerGameService(handler))
+            {
+                Assert.True(perGame.ImpressionsArePerGame);
+                Assert.Equal("A 遊戲心得", perGame.ImpressionsTitleFor("A"));
+            }
+            using (var shared = Service(handler))
+            {
+                Assert.False(shared.ImpressionsArePerGame);
+                Assert.Equal("遊戲心得", shared.ImpressionsTitleFor("A"));
             }
         }
 

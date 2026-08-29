@@ -21,7 +21,7 @@ namespace GalCompanion
             panel.Children.Add(Header("截圖"));
             panel.Children.Add(CheckRow("按 📷 / 📝 先開輸入框，再按一次才送出", "Settings.CaptureWithNote",
                 "可以在遊戲當下直接寫一句註解，跟截圖一起送到 Trilium："
-                + "📷 進遊戲筆記、📝 進翻譯問題。不寫就是連按兩次。"
+                + "📷 進當天的「遊戲名 遊戲心得」、📝 進其底下的「翻譯問題」。不寫就是連按兩次。"
                 + "輸入框裡可以取消「附上截圖」只送文字。需要啟用 Trilium 才生效。"));
             panel.Children.Add(CheckRow("截圖後播提示音", "Settings.PlaySound", null));
             panel.Children.Add(CheckRow("只截遊戲畫面（不含視窗邊框）", "Settings.ClientAreaOnly", null));
@@ -42,7 +42,7 @@ namespace GalCompanion
 
             panel.Children.Add(Header("Trilium"));
             panel.Children.Add(Note(
-                "📷 寫進當天的心得筆記，📝 寫進心得底下的子議題；兩顆都可以「截圖＋註解」一起送。"
+                "當天日記 →「遊戲名 遊戲心得」→「翻譯問題」。📷 寫上面那層、📝 寫子議題，兩顆都可以「截圖＋註解」一起送。"
                 + "當天的日記由 Trilium 自己的日期筆記端點決定，端點不能用時才退回標題比對。"));
             panel.Children.Add(CheckRow("啟用 Trilium", "Settings.TriliumEnabled", null));
             panel.Children.Add(TextRow("伺服器網址", "Settings.TriliumUrl", "例 https://trilium.example.com"));
@@ -51,8 +51,11 @@ namespace GalCompanion
                 "從 Trilium 網址列的 #root/xxxxx 抓最後那段。"));
             panel.Children.Add(TextRow("日期格式", "Settings.TriliumDateFormat",
                 "用來比對日記標題，例 yyyy.MM.dd。"));
-            panel.Children.Add(TextRow("心得筆記標題", "Settings.TriliumImpressionsTitle", "📷 寫這裡。"));
-            panel.Children.Add(TextRow("子議題筆記標題", "Settings.TriliumTranslationTitle", "📝 寫這裡。"));
+            panel.Children.Add(TextRow("心得筆記標題", "Settings.TriliumImpressionsTitle",
+                "📷 寫這裡。{game} 會換成遊戲名，例「{game} 遊戲心得」→「モザイクの天使 遊戲心得」。"
+                + "不寫 {game} 就是所有遊戲共用同一則。"));
+            panel.Children.Add(TextRow("子議題筆記標題", "Settings.TriliumTranslationTitle",
+                "📝 寫這裡，建在心得筆記底下。一樣支援 {game}。"));
             panel.Children.Add(CheckRow("截圖自動送 Trilium", "Settings.TriliumSendScreenshots",
                 "關掉的話只有 📝 手動記錄會送。"));
 

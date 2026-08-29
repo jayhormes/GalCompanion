@@ -671,12 +671,17 @@ namespace GalCompanion
 
         private string DestinationLabel(TriliumTarget target)
         {
-            var title = target == TriliumTarget.Translation
-                ? config?.TriliumTranslationTitle
-                : config?.TriliumImpressionsTitle;
-            return string.IsNullOrWhiteSpace(title)
-                ? (target == TriliumTarget.Translation ? "翻譯問題" : "遊戲筆記")
-                : title.Trim();
+            var service = trilium;
+            var name = runningGame?.Name;
+            if (service == null)
+            {
+                return target == TriliumTarget.Translation
+                    ? TriliumTitles.DefaultTranslation
+                    : TriliumTitles.Format(TriliumTitles.DefaultImpressions, name, TriliumTitles.DefaultImpressions);
+            }
+            return target == TriliumTarget.Translation
+                ? service.TranslationTitleFor(name)
+                : service.ImpressionsTitleFor(name);
         }
 
         private void PlaceComposer(ComposerWindow win)
@@ -909,7 +914,8 @@ namespace GalCompanion
                 try
                 {
                     var now = DateTime.Now;
-                    var cacheKey = service.FormatDate(now) + "|" + target;
+                    // 心得ノートはゲームごとに分かれるので、キャッシュキーにもゲーム名が要る
+                    var cacheKey = service.FormatDate(now) + "|" + game.Name + "|" + target;
                     string noteId;
                     lock (triliumNoteCache)
                     {
@@ -917,13 +923,17 @@ namespace GalCompanion
                     }
                     if (string.IsNullOrEmpty(noteId))
                     {
-                        noteId = await service.ResolveTargetNoteAsync(now, config.TriliumParentNoteId, target);
+                        noteId = await service.ResolveTargetNoteAsync(
+                            now, config.TriliumParentNoteId, target, game.Name);
                         lock (triliumNoteCache)
                         {
                             triliumNoteCache[cacheKey] = noteId;
                         }
                     }
-                    await service.AppendEntryAsync(noteId, now, game.Name, pngBytes, text);
+
+                    // ノート標題にゲーム名が入っているなら、見出しで繰り返さない
+                    var heading = service.ImpressionsArePerGame ? null : game.Name;
+                    await service.AppendEntryAsync(noteId, now, heading, pngBytes, text);
                     logger.Info($"GalCompanion 已寫入 Trilium note {noteId}");
                 }
                 catch (Exception e)
