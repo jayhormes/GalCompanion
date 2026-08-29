@@ -14,6 +14,7 @@ namespace GalCompanion
         public event Action<double, double> Moved;
 
         private readonly Button captureButton;
+        private Button noteButton;
         private readonly double idleOpacity;
         private bool composing;
 
@@ -75,7 +76,7 @@ namespace GalCompanion
 
             if (onNote != null)
             {
-                var noteButton = new Button
+                noteButton = new Button
                 {
                     Content = "📝",
                     FontSize = 22,
@@ -109,13 +110,26 @@ namespace GalCompanion
             };
         }
 
-        /// <summary>入力欄を開いている間は「もう一度押せば送る」と分かる見た目にする。</summary>
-        public void SetComposing(bool value)
+        /// <summary>
+        /// 入力欄を開いている間は「もう一度押せば送る」と分かる見た目にする。
+        /// どちらのボタンで開いたかで印を付ける側を変える。
+        /// </summary>
+        public void SetComposing(bool value, bool onNoteButton = false)
         {
             composing = value;
-            captureButton.Content = value ? "✅" : "📷";
-            captureButton.ToolTip = value ? "送出（含輸入框的文字）" : null;
+            SetGlyph(captureButton, "📷", value && !onNoteButton);
+            SetGlyph(noteButton, "📝", value && onNoteButton);
             Opacity = value ? 1.0 : idleOpacity;
+        }
+
+        private static void SetGlyph(Button button, string idle, bool active)
+        {
+            if (button == null)
+            {
+                return;
+            }
+            button.Content = active ? "✅" : idle;
+            button.ToolTip = active ? "送出（含輸入框的文字）" : null;
         }
     }
 }

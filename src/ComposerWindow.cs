@@ -13,13 +13,17 @@ namespace GalCompanion
     internal sealed class ComposerWindow : Window
     {
         private readonly TextBox textBox;
+        private readonly CheckBox attachBox;
 
         public event Action Committed;
         public event Action Cancelled;
 
         public string Text => textBox.Text;
 
-        public ComposerWindow(string gameTitle)
+        /// <summary>截圖を添えるか。翻訳の指摘は該当箇所の絵があってこそ後で読めるので既定は付ける。</summary>
+        public bool AttachScreenshot => attachBox.IsChecked == true;
+
+        public ComposerWindow(string gameTitle, string destination, bool attachScreenshot)
         {
             WindowStyle = WindowStyle.None;
             ResizeMode = ResizeMode.NoResize;
@@ -30,9 +34,10 @@ namespace GalCompanion
             SizeToContent = SizeToContent.Height;
             Width = 420;
 
+            var label = string.IsNullOrWhiteSpace(destination) ? "補充描述" : destination;
             var heading = new TextBlock
             {
-                Text = string.IsNullOrWhiteSpace(gameTitle) ? "補充描述" : $"補充描述 — {gameTitle}",
+                Text = string.IsNullOrWhiteSpace(gameTitle) ? label : $"{label} — {gameTitle}",
                 Foreground = Brushes.White,
                 FontWeight = FontWeights.Bold,
                 Margin = new Thickness(0, 0, 0, 6),
@@ -50,9 +55,17 @@ namespace GalCompanion
                 Padding = new Thickness(4)
             };
 
+            attachBox = new CheckBox
+            {
+                Content = "附上截圖",
+                Foreground = Brushes.White,
+                IsChecked = attachScreenshot,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+
             var hint = new TextBlock
             {
-                Text = "再按一次 📷 送出　·　Enter 送出　·　Shift+Enter 換行　·　Esc 取消",
+                Text = "再按一次同一顆按鈕送出　·　Enter 送出　·　Shift+Enter 換行　·　Esc 取消",
                 Foreground = Brushes.White,
                 Opacity = 0.7,
                 FontSize = 11,
@@ -76,14 +89,18 @@ namespace GalCompanion
             };
             cancel.Click += (s, e) => Cancelled?.Invoke();
 
-            var buttons = new StackPanel
+            var right = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
-                HorizontalAlignment = HorizontalAlignment.Right,
-                Margin = new Thickness(0, 8, 0, 0)
+                HorizontalAlignment = HorizontalAlignment.Right
             };
-            buttons.Children.Add(cancel);
-            buttons.Children.Add(send);
+            right.Children.Add(cancel);
+            right.Children.Add(send);
+
+            var buttons = new DockPanel { Margin = new Thickness(0, 8, 0, 0) };
+            DockPanel.SetDock(attachBox, Dock.Left);
+            buttons.Children.Add(attachBox);
+            buttons.Children.Add(right);
 
             var stack = new StackPanel();
             stack.Children.Add(heading);

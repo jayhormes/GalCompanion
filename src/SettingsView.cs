@@ -19,9 +19,10 @@ namespace GalCompanion
             var panel = new StackPanel { Margin = new Thickness(0, 0, 10, 10) };
 
             panel.Children.Add(Header("截圖"));
-            panel.Children.Add(CheckRow("按 📷 先開輸入框，再按一次才送出", "Settings.CaptureWithNote",
-                "可以在遊戲當下直接寫一句補充描述，跟截圖一起送到 Trilium。"
-                + "不寫就是連按兩次 📷。只有啟用 Trilium 並開啟「截圖自動送 Trilium」時才生效。"));
+            panel.Children.Add(CheckRow("按 📷 / 📝 先開輸入框，再按一次才送出", "Settings.CaptureWithNote",
+                "可以在遊戲當下直接寫一句註解，跟截圖一起送到 Trilium："
+                + "📷 進遊戲筆記、📝 進翻譯問題。不寫就是連按兩次。"
+                + "輸入框裡可以取消「附上截圖」只送文字。需要啟用 Trilium 才生效。"));
             panel.Children.Add(CheckRow("截圖後播提示音", "Settings.PlaySound", null));
             panel.Children.Add(CheckRow("只截遊戲畫面（不含視窗邊框）", "Settings.ClientAreaOnly", null));
             panel.Children.Add(CheckRow("左鍵截圖也存一份 PNG 到本機", "Settings.SaveToFile",
@@ -41,8 +42,8 @@ namespace GalCompanion
 
             panel.Children.Add(Header("Trilium"));
             panel.Children.Add(Note(
-                "📷 截圖寫進當天的心得筆記，📝 文字寫進心得底下的子議題。"
-                + "會先找當天既有的日記（標題以日期開頭），找不到才在下面指定的父 note 建一則。"));
+                "📷 寫進當天的心得筆記，📝 寫進心得底下的子議題；兩顆都可以「截圖＋註解」一起送。"
+                + "當天的日記由 Trilium 自己的日期筆記端點決定，端點不能用時才退回標題比對。"));
             panel.Children.Add(CheckRow("啟用 Trilium", "Settings.TriliumEnabled", null));
             panel.Children.Add(TextRow("伺服器網址", "Settings.TriliumUrl", "例 https://trilium.example.com"));
             panel.Children.Add(TextRow("ETAPI token", "Settings.TriliumToken", "Trilium → Options → ETAPI 產生。"));

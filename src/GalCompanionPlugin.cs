@@ -44,6 +44,9 @@ namespace GalCompanion
         // 入力欄を閉じてから撮るまでの待ち。screencrop で入力欄が写り込むのを防ぐ
         private const int CaptureSettleMs = 120;
 
+        // 入力欄の「附上截圖」。セッション中は前回の選択を引き継ぐ
+        private bool attachScreenshot = true;
+
         public GalCompanionPlugin(IPlayniteAPI api) : base(api)
         {
             // Load/SavePluginSettings は ExtensionsData/<id>/config.json を読み書きするので、
@@ -56,11 +59,12 @@ namespace GalCompanion
                     ApplySettings();
                 });
 
-            // 本文の行き先が Trilium しかないので、そこが無効なら 1 回押しの素の截圖に戻す
-            composer = new CaptureComposer(
-                () => config?.CaptureWithNote == true
-                    && config.TriliumSendScreenshots
-                    && trilium != null);
+            // 本文の行き先が Trilium しかないので、そこが無効なら従来の 1 回押しに戻す。
+            // 📝 は元々 Trilium 前提なので TriliumSendScreenshots には縛られない
+            composer = new CaptureComposer(target =>
+                config?.CaptureWithNote == true
+                && trilium != null
+                && (target != TriliumTarget.Impressions || config.TriliumSendScreenshots));
 
             Properties = new GenericPluginProperties { HasSettings = true };
         }
@@ -407,7 +411,7 @@ namespace GalCompanion
                     bubble = new BubbleWindow(
                         CaptureRecord,
                         CaptureClipboard,
-                        OpenNoteInput,
+                        NoteRecord,
                         GalCompanionConfig.ClampOpacity(config.BubbleOpacity));
                     bubble.Moved += (x, y) =>
                     {
@@ -603,18 +607,37 @@ namespace GalCompanion
         // 左鍵/熱鍵：記錄（Trilium、可選本地歸檔）；右鍵：只進剪貼簿
         private void CaptureRecord()
         {
+            HandlePress(TriliumTarget.Impressions);
+        }
+
+        // 📝：翻譯問題ノート宛て。宛先が違うだけで 📷 と同じ 2 段押し
+        private void NoteRecord()
+        {
+            HandlePress(TriliumTarget.Translation);
+        }
+
+        private void HandlePress(TriliumTarget target)
+        {
             RunOnUi(() =>
             {
-                switch (composer.Press())
+                var press = composer.Press(target);
+                switch (press.Action)
                 {
                     case CapturePress.OpenComposer:
-                        OpenComposer();
+                        OpenComposer(press.Target);
                         break;
                     case CapturePress.Commit:
                         CommitComposer();
                         break;
                     default:
-                        Capture(false, null, IntPtr.Zero);
+                        if (target == TriliumTarget.Translation)
+                        {
+                            OpenNoteInput();
+                        }
+                        else
+                        {
+                            Capture(false, null, IntPtr.Zero, TriliumTarget.Impressions);
+                        }
                         break;
                 }
             });
@@ -623,16 +646,17 @@ namespace GalCompanion
         private void CaptureClipboard()
         {
             // 入力欄が開いている間は前景がゲームではないので、控えておいた窓を撮る
-            Capture(true, null, composerWindow != null ? composeTarget : IntPtr.Zero);
+            Capture(true, null, composerWindow != null ? composeTarget : IntPtr.Zero,
+                TriliumTarget.Impressions);
         }
 
         /// <summary>入力欄を気泡の隣に出す。ここではまだ撮らない。</summary>
-        private void OpenComposer()
+        private void OpenComposer(TriliumTarget target)
         {
             // 入力欄にフォーカスが移る前に、今のゲーム窓を控えておく
             composeTarget = NativeMethods.GetForegroundWindow();
 
-            var win = new ComposerWindow(runningGame?.Name);
+            var win = new ComposerWindow(runningGame?.Name, DestinationLabel(target), attachScreenshot);
             win.Committed += CommitComposer;
             win.Cancelled += CancelComposer;
             composerWindow = win;
@@ -642,7 +666,17 @@ namespace GalCompanion
             win.Show();
             PlaceComposer(win);
             win.Activate();
-            bubble?.SetComposing(true);
+            bubble?.SetComposing(true, target == TriliumTarget.Translation);
+        }
+
+        private string DestinationLabel(TriliumTarget target)
+        {
+            var title = target == TriliumTarget.Translation
+                ? config?.TriliumTranslationTitle
+                : config?.TriliumImpressionsTitle;
+            return string.IsNullOrWhiteSpace(title)
+                ? (target == TriliumTarget.Translation ? "翻譯問題" : "遊戲筆記")
+                : title.Trim();
         }
 
         private void PlaceComposer(ComposerWindow win)
@@ -680,13 +714,30 @@ namespace GalCompanion
             }
             composer.Cancel();
             var text = win.Text;
-            var target = composeTarget;
+            var hwnd = composeTarget;
+            var dest = composer.Target;
+            attachScreenshot = win.AttachScreenshot;
+
+            if (!attachScreenshot)
+            {
+                CloseComposerCore();
+                if (string.IsNullOrWhiteSpace(text))
+                {
+                    return;
+                }
+                SendToTrilium(dest, null, text);
+                if (config.PlaySound)
+                {
+                    SystemSounds.Asterisk.Play();
+                }
+                return;
+            }
 
             // 先に閉じてゲームを前面に戻す。screencrop で入力欄が写り込まないように
             CloseComposerCore();
-            SettleBeforeCapture(target);
+            SettleBeforeCapture(hwnd);
 
-            Capture(false, text, target);
+            Capture(false, text, hwnd, dest);
         }
 
         /// <summary>書きかけを捨てて閉じる。UI スレッド上で呼ぶこと。</summary>
@@ -743,7 +794,7 @@ namespace GalCompanion
             dispatcher.Invoke(new Action(() => { }), DispatcherPriority.Render);
         }
 
-        private void Capture(bool clipboardOnly, string note, IntPtr target)
+        private void Capture(bool clipboardOnly, string note, IntPtr target, TriliumTarget dest)
         {
             try
             {
@@ -779,9 +830,13 @@ namespace GalCompanion
                             logger.Info($"GalCompanion 截圖已存：{path}");
                             recorded = true;
                         }
-                        if (trilium != null && config.TriliumSendScreenshots && runningGame != null)
+                        // TriliumSendScreenshots は 📷 の自動送信だけを止める設定。
+                        // 📝 は自分で押した記録なので常に送る
+                        var canSend = trilium != null && runningGame != null
+                            && (dest != TriliumTarget.Impressions || config.TriliumSendScreenshots);
+                        if (canSend)
                         {
-                            SendToTrilium(TriliumTarget.Impressions, pngBytes, note);
+                            SendToTrilium(dest, pngBytes, note);
                             recorded = true;
                         }
                         else if (!string.IsNullOrWhiteSpace(note))
