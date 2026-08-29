@@ -66,6 +66,7 @@ namespace GalCompanion.Tests
         public async Task EnsureDateNote_uses_existing_diary_without_creating()
         {
             var handler = new FakeHttpHandler();
+            handler.Enqueue("", System.Net.HttpStatusCode.NotFound);   // calendar 端点なし
             handler.Enqueue("{\"results\":[{\"noteId\":\"diary1\",\"isProtected\":false,"
                 + "\"title\":\"2026.08.28 星期五 (Week35) - 晨間日記\",\"type\":\"text\"}]}");
 
@@ -74,8 +75,9 @@ namespace GalCompanion.Tests
                 var noteId = await service.EnsureDateNoteAsync(Ts, "fallbackParent");
 
                 Assert.Equal("diary1", noteId);
-                Assert.Single(handler.Requests);
-                Assert.Contains("/etapi/notes?search=", handler.Requests[0].Url);
+                Assert.Equal(2, handler.Requests.Count);
+                Assert.Contains("/etapi/calendar/days/2026-08-28", handler.Requests[0].Url);
+                Assert.Contains("/etapi/notes?search=", handler.Requests[1].Url);
             }
         }
 
@@ -83,6 +85,7 @@ namespace GalCompanion.Tests
         public async Task EnsureDateNote_creates_under_fallback_when_diary_missing()
         {
             var handler = new FakeHttpHandler();
+            handler.Enqueue("", System.Net.HttpStatusCode.NotFound);   // calendar 端点なし
             // 曖昧一致のみ＝当日の日記は無い
             handler.Enqueue("{\"results\":[{\"noteId\":\"old\",\"title\":\"2015.08.28 星期五\"}]}");
             handler.Enqueue("{\"note\":{\"noteId\":\"new1\"}}");
@@ -92,9 +95,9 @@ namespace GalCompanion.Tests
                 var noteId = await service.EnsureDateNoteAsync(Ts, "fallbackParent");
 
                 Assert.Equal("new1", noteId);
-                Assert.Equal(2, handler.Requests.Count);
-                Assert.Contains("\"parentNoteId\":\"fallbackParent\"", handler.Requests[1].Body);
-                Assert.Contains("\"title\":\"2026.08.28\"", handler.Requests[1].Body);
+                Assert.Equal(3, handler.Requests.Count);
+                Assert.Contains("\"parentNoteId\":\"fallbackParent\"", handler.Requests[2].Body);
+                Assert.Contains("\"title\":\"2026.08.28\"", handler.Requests[2].Body);
             }
         }
 
@@ -102,12 +105,32 @@ namespace GalCompanion.Tests
         public async Task EnsureDateNote_throws_when_missing_and_no_fallback()
         {
             var handler = new FakeHttpHandler();
+            handler.Enqueue("", System.Net.HttpStatusCode.NotFound);   // calendar 端点なし
             handler.Enqueue("{\"results\":[]}");
 
             using (var service = Service(handler))
             {
                 await Assert.ThrowsAsync<InvalidOperationException>(
                     () => service.EnsureDateNoteAsync(Ts, ""));
+            }
+        }
+
+
+        [Fact]
+        public async Task EnsureDateNote_prefers_the_builtin_day_note_endpoint()
+        {
+            var handler = new FakeHttpHandler();
+            // ユーザーの日記は「29 - 週六」のようにタイトルに年月が入らないので、
+            // 標題検索ではなく Trilium 内蔵の日付ノートを使う
+            handler.Enqueue("{\"noteId\":\"CYDHSGjTIyK4\",\"title\":\"28 - 週五\"}");
+
+            using (var service = Service(handler))
+            {
+                var noteId = await service.EnsureDateNoteAsync(Ts, "fallbackParent");
+
+                Assert.Equal("CYDHSGjTIyK4", noteId);
+                Assert.Single(handler.Requests);
+                Assert.Contains("/etapi/calendar/days/2026-08-28", handler.Requests[0].Url);
             }
         }
 
@@ -148,7 +171,7 @@ namespace GalCompanion.Tests
         public async Task ResolveTarget_impressions_stops_at_the_day_note_child()
         {
             var handler = new FakeHttpHandler();
-            handler.Enqueue("{\"results\":[{\"noteId\":\"diary1\",\"title\":\"2026.08.28 星期五 - 晨間日記\"}]}");
+            handler.Enqueue("{\"noteId\":\"diary1\",\"title\":\"29 - 週六\"}");   // calendar 端点
             handler.Enqueue("{\"noteId\":\"diary1\",\"childNoteIds\":[\"imp\"]}");
             handler.Enqueue("{\"noteId\":\"imp\",\"title\":\"遊戲心得\"}");
 
@@ -163,7 +186,7 @@ namespace GalCompanion.Tests
         public async Task ResolveTarget_translation_goes_one_level_deeper()
         {
             var handler = new FakeHttpHandler();
-            handler.Enqueue("{\"results\":[{\"noteId\":\"diary1\",\"title\":\"2026.08.28 星期五 - 晨間日記\"}]}");
+            handler.Enqueue("{\"noteId\":\"diary1\",\"title\":\"29 - 週六\"}");   // calendar 端点
             handler.Enqueue("{\"noteId\":\"diary1\",\"childNoteIds\":[\"imp\"]}");
             handler.Enqueue("{\"noteId\":\"imp\",\"title\":\"遊戲心得\"}");
             handler.Enqueue("{\"noteId\":\"imp\",\"childNoteIds\":[\"tr\"]}");
@@ -180,6 +203,7 @@ namespace GalCompanion.Tests
         public async Task ResolveTarget_creates_the_whole_chain_on_a_fresh_day()
         {
             var handler = new FakeHttpHandler();
+            handler.Enqueue("", System.Net.HttpStatusCode.NotFound);   // calendar 端点なし
             handler.Enqueue("{\"results\":[]}");                       // 日記なし
             handler.Enqueue("{\"note\":{\"noteId\":\"date1\"}}");      // 日付ノート作成
             handler.Enqueue("{\"noteId\":\"date1\",\"childNoteIds\":[]}");
@@ -191,8 +215,8 @@ namespace GalCompanion.Tests
             {
                 var noteId = await service.ResolveTargetNoteAsync(Ts, "parent", TriliumTarget.Translation);
                 Assert.Equal("tr1", noteId);
-                Assert.Contains("\"parentNoteId\":\"date1\"", handler.Requests[3].Body);
-                Assert.Contains("\"parentNoteId\":\"imp1\"", handler.Requests[5].Body);
+                Assert.Contains("\"parentNoteId\":\"date1\"", handler.Requests[4].Body);
+                Assert.Contains("\"parentNoteId\":\"imp1\"", handler.Requests[6].Body);
             }
         }
 

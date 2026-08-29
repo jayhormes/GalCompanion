@@ -40,6 +40,14 @@ namespace GalCompanion
         /// </summary>
         public async Task<string> EnsureDateNoteAsync(DateTime date, string fallbackParentNoteId)
         {
+            // 1. Trilium 内蔵の日付ノート。ユーザーの Journal 構造（年/月/日）にそのまま乗る
+            var dayNoteId = await client.GetDayNoteIdAsync(date).ConfigureAwait(false);
+            if (!string.IsNullOrEmpty(dayNoteId))
+            {
+                return dayNoteId;
+            }
+
+            // 2. Journal 未設定などで使えないときだけ、タイトル検索へ退避
             var dateKey = FormatDate(date);
 
             var hits = await client.SearchNotesAsync("\"" + dateKey + "\"", 30).ConfigureAwait(false);
@@ -52,7 +60,8 @@ namespace GalCompanion
             if (string.IsNullOrWhiteSpace(fallbackParentNoteId))
             {
                 throw new InvalidOperationException(
-                    $"找不到 {dateKey} 的日記，且未設定 TriliumParentNoteId 可供建立");
+                    $"Trilium 沒有回傳 {dateKey} 的日期筆記，標題也搜不到，"
+                    + "且未設定「找不到當天日記時的父 note id」可供建立");
             }
             return await client.CreateNoteAsync(fallbackParentNoteId, dateKey).ConfigureAwait(false);
         }

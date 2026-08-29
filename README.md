@@ -12,7 +12,7 @@ Playnite 外掛。給 GalGame 玩家的遊玩伴侶：截圖筆記、（規劃�
 - 截圖歸檔路徑相容 ExtraMetadata 慣例：`<Playnite設定目錄>\ExtraMetadata\games\<GameId>\screenshots\`
 - 遊戲右鍵選單 → GalCompanion → 打開截圖資料夾
 - 成功時播系統提示音；沒有遊戲在跑時截到的圖存到 `ExtraMetadata\screenshots\unassigned\`
-- **Trilium 直送**（Phase 2）：📷 截圖寫進當天的「遊戲心得」、📝 文字寫進其下的「翻譯問題」子 note；會自動找當天既有的晨間日記掛上去
+- **Trilium 直送**（Phase 2）：用 Trilium 內建的日期筆記（Journal/年/月/日）定位當天，📷 截圖寫進其下的「遊戲筆記」、📝 文字寫進再下一層的「翻譯問題」
 - **存檔跨裝置同步**（Phase 3）：啟動前自動判定拉/推/衝突、結束後自動推上 NAS、當機漏推下次啟動補推；衝突一律跳對話框不自動覆蓋；遊戲右鍵選單可手動推/拉
 
 ## 安裝
@@ -25,6 +25,8 @@ Playnite 外掛。給 GalGame 玩家的遊玩伴侶：截圖筆記、（規劃�
 **附加元件 → 擴充功能 → GalCompanion** 裡面設定，存檔後即時生效（熱鍵、Trilium、存檔同步都會用新設定重建，不用重啟）。
 
 氣泡窗跑到螢幕外時（換螢幕或改解析度會發生），設定畫面裡有「把氣泡窗移回畫面中央」。下次顯示時也會自動檢查座標，看不到就自己回中央。
+
+Trilium 那段只要填網址與 token 就會動 —— 當天的日期筆記由 Trilium 自己的 Journal 結構決定，不需要指定父 note。
 
 設定存在 `%AppData%\Playnite\ExtensionsData\80cdee03-e216-4df2-b247-a56056f61543\config.json`，原本手寫的內容會直接沿用。`SaveRules` 因為是逐遊戲的路徑表，仍然只能改 JSON。
 
@@ -42,9 +44,9 @@ Playnite 外掛。給 GalGame 玩家的遊玩伴侶：截圖筆記、（規劃�
 | `TriliumEnabled` | `false` | 開啟 Trilium 直送 |
 | `TriliumUrl` | 空 | 例 `http://nas:8080`（需 Trilium ≥ 0.61 的 ETAPI） |
 | `TriliumToken` | 空 | Trilium → Options → ETAPI 產生 |
-| `TriliumParentNoteId` | 空 | **找不到當天日記時**，在這個 note 底下建日期 note |
-| `TriliumDateFormat` | `yyyy.MM.dd` | 用來比對既有日記標題的日期格式 |
-| `TriliumImpressionsTitle` | `遊戲心得` | 日期底下的心得 note 標題（📷 寫這裡） |
+| `TriliumParentNoteId` | 空 | **只有 Trilium 日期筆記端點不能用時**才會用到：在這個 note 底下建日期 note |
+| `TriliumDateFormat` | `yyyy.MM.dd` | 同上，退路用的標題比對格式 |
+| `TriliumImpressionsTitle` | `遊戲筆記` | 日期底下的筆記標題（📷 寫這裡）；已存在就直接沿用 |
 | `TriliumTranslationTitle` | `翻譯問題` | 心得底下的子議題 note 標題（📝 寫這裡） |
 | `TriliumSendScreenshots` | `true` | 截圖自動 append；`false` 則只有 📝 手動記錄才送 |
 | `SaveSyncEnabled` | `false` | 開啟存檔同步 |

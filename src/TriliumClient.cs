@@ -19,6 +19,23 @@ namespace GalCompanion
             http.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", token);
         }
 
+        /// <summary>
+        /// Trilium 内蔵の日付ノート（Journal/年/月/日）を取得する。無ければ Trilium 側が作る。
+        /// タイトル規則（「29 - 週六」等）に依存しないので、これが取れるなら最優先。
+        /// Journal root 未設定などで失敗したら null。
+        /// </summary>
+        public async Task<string> GetDayNoteIdAsync(DateTime date)
+        {
+            var resp = await http.GetAsync(
+                $"{baseUrl}/etapi/calendar/days/{date:yyyy-MM-dd}").ConfigureAwait(false);
+            if (!resp.IsSuccessStatusCode)
+            {
+                return null;
+            }
+            var body = await resp.Content.ReadAsStringAsync().ConfigureAwait(false);
+            return JsonUtil.ExtractString(body, "noteId");
+        }
+
         // Trilium の全文検索は曖昧一致（"2026.08.28" で 2015 年のノートも返る）。
         // 呼び出し側でタイトルを検証すること。
         public async Task<List<TriliumNote>> SearchNotesAsync(string query, int limit = 20)

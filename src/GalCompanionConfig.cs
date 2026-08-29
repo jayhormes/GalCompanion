@@ -23,7 +23,7 @@ namespace GalCompanion
         private string triliumParentNoteId = string.Empty;
         private bool triliumSendScreenshots = true;
         private string triliumDateFormat = "yyyy.MM.dd";
-        private string triliumImpressionsTitle = "遊戲心得";
+        private string triliumImpressionsTitle = "遊戲筆記";
         private string triliumTranslationTitle = "翻譯問題";
         private bool saveSyncEnabled;
         private string rclonePath = "rclone";
@@ -132,7 +132,7 @@ namespace GalCompanion
             set => SetValue(ref triliumSendScreenshots, value);
         }
 
-        // 日期節點的標題格式。用來比對既有晨間日記（例「2026.08.28 星期五 (Week35) - 晨間日記」）
+        // 只有 Trilium 的日期筆記端點不可用時，才拿這個格式去比對標題
         public string TriliumDateFormat
         {
             get => triliumDateFormat;
