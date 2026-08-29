@@ -85,9 +85,9 @@ namespace LunaImport
         }
 
         /// <summary>db から uid ごとのセッションを読む。開始 ≥ 終了 の壊れた行は Luna 自身も捨てている。</summary>
-        internal static Dictionary<string, List<PlaySession>> ReadSessions(Sqlite db)
+        internal static Dictionary<string, List<LunaSession>> ReadSessions(Sqlite db)
         {
-            var byUid = new Dictionary<string, List<PlaySession>>(StringComparer.Ordinal);
+            var byUid = new Dictionary<string, List<LunaSession>>(StringComparer.Ordinal);
             var rows = db.Query(
                 "SELECT gameinternalid_v2.gameuid, trace_strict.timestart, trace_strict.timestop "
                 + "FROM gameinternalid_v2 "
@@ -107,13 +107,13 @@ namespace LunaImport
                     continue;
                 }
 
-                List<PlaySession> list;
+                List<LunaSession> list;
                 if (!byUid.TryGetValue(uid, out list))
                 {
-                    list = new List<PlaySession>();
+                    list = new List<LunaSession>();
                     byUid[uid] = list;
                 }
-                list.Add(new PlaySession
+                list.Add(new LunaSession
                 {
                     Start = FromUnix(start.Value),
                     End = FromUnix(stop.Value),

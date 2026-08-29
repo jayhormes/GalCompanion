@@ -13,7 +13,7 @@ namespace LunaImport.Tests
             foreach (var s in sessions)
             {
                 var start = new DateTime(2026, 1, s.day, 20, 0, 0);
-                game.Sessions.Add(new PlaySession { Start = start, End = start.AddMinutes(s.minutes) });
+                game.Sessions.Add(new LunaSession { Start = start, End = start.AddMinutes(s.minutes) });
             }
             return game;
         }

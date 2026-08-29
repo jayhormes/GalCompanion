@@ -19,7 +19,8 @@ namespace LunaImport
   --playnite <路徑>   Playnite 的資料夾，預設 %AppData%\Playnite
   --apply             實際寫入。不加就只印報告，什麼都不動
   --overwrite         Playnite 已經有時數的也覆蓋（預設跳過，不動既有紀錄）
-  --no-sessions       只寫總時數，不寫 GameActivity 的逐次紀錄
+  --no-sessions       只寫總時數，不寫逐次遊玩紀錄
+  --game-activity     逐次紀錄也寫一份進 GameActivity 擴充
   --backup <路徑>     備份 zip 放哪，預設 Playnite 資料夾下的 LunaImportBackup
 
 寫入前 Playnite 必須關閉，否則記憶體裡的舊資料會蓋回去。";
@@ -92,12 +93,12 @@ namespace LunaImport
             Console.WriteLine("備份：" + PlayniteLibrary.Backup(gamesDir, backupDir, stamp));
 
             string activityDir = null;
-            if (options.WriteSessions)
+            if (options.WriteSessions && options.WriteGameActivity)
             {
                 activityDir = GameActivityWriter.FindDataDir(options.PlayniteRoot);
                 if (activityDir == null)
                 {
-                    Console.WriteLine("沒有找到 GameActivity 的資料夾，這次只寫總時數。");
+                    Console.WriteLine("沒有找到 GameActivity 的資料夾，跳過那一份。");
                 }
                 else
                 {
@@ -112,6 +113,17 @@ namespace LunaImport
                 {
                     GameActivityWriter.Write(activityDir, entry);
                 }
+            }
+
+            if (options.WriteSessions)
+            {
+                var sessionBackup = GalCompanionWriter.Backup(options.PlayniteRoot, backupDir, stamp);
+                if (sessionBackup != null)
+                {
+                    Console.WriteLine("備份：" + sessionBackup);
+                }
+                var added = GalCompanionWriter.Write(options.PlayniteRoot, writable);
+                Console.WriteLine($"GalCompanion 遊玩紀錄新增 {added} 筆。");
             }
 
             Console.WriteLine($"已寫入 {writable.Count} 款。啟動 Playnite 確認。");
@@ -181,6 +193,7 @@ namespace LunaImport
             public bool Apply;
             public bool Overwrite;
             public bool WriteSessions = true;
+            public bool WriteGameActivity;
 
             public static Options Parse(string[] args)
             {
@@ -209,6 +222,9 @@ namespace LunaImport
                             break;
                         case "--no-sessions":
                             options.WriteSessions = false;
+                            break;
+                        case "--game-activity":
+                            options.WriteGameActivity = true;
                             break;
                         default:
                             return null;

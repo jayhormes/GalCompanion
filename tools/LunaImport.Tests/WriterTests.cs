@@ -120,7 +120,7 @@ namespace LunaImport.Tests
             var luna = new LunaGame();
             foreach (var start in starts)
             {
-                luna.Sessions.Add(new PlaySession { Start = start, End = start.AddHours(1) });
+                luna.Sessions.Add(new LunaSession { Start = start, End = start.AddHours(1) });
             }
             return new PlanEntry
             {

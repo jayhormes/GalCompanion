@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace LunaImport
 {
     /// <summary>LunaTranslator の 1 回の起動から終了まで。</summary>
-    internal sealed class PlaySession
+    internal sealed class LunaSession
     {
         public DateTime Start;
         public DateTime End;
@@ -17,7 +17,7 @@ namespace LunaImport
         public string Uid;
         public string GamePath;
         public string Title;
-        public List<PlaySession> Sessions = new List<PlaySession>();
+        public List<LunaSession> Sessions = new List<LunaSession>();
 
         public long TotalSeconds
         {

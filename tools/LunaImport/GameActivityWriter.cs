@@ -33,7 +33,7 @@ namespace LunaImport
             return null;
         }
 
-        internal static JObject BuildActivity(PlaySession session)
+        internal static JObject BuildActivity(LunaSession session)
         {
             return new JObject
             {
