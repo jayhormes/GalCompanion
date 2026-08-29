@@ -14,6 +14,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 
 namespace GalCompanion
 {
@@ -34,6 +35,15 @@ namespace GalCompanion
         private SaveSyncService saveSync;
         private Game runningGame;
 
+        // 📷 の 2 段押し（入力欄 → 送出）
+        private readonly CaptureComposer composer;
+        private ComposerWindow composerWindow;
+        // 入力欄にフォーカスが移るとゲームが前景から外れるので、開いた時点の窓を覚えておく
+        private IntPtr composeTarget;
+
+        // 入力欄を閉じてから撮るまでの待ち。screencrop で入力欄が写り込むのを防ぐ
+        private const int CaptureSettleMs = 120;
+
         public GalCompanionPlugin(IPlayniteAPI api) : base(api)
         {
             // Load/SavePluginSettings は ExtensionsData/<id>/config.json を読み書きするので、
@@ -45,6 +55,12 @@ namespace GalCompanion
                     SavePluginSettings(saved);
                     ApplySettings();
                 });
+
+            // 本文の行き先が Trilium しかないので、そこが無効なら 1 回押しの素の截圖に戻す
+            composer = new CaptureComposer(
+                () => config?.CaptureWithNote == true
+                    && config.TriliumSendScreenshots
+                    && trilium != null);
 
             Properties = new GenericPluginProperties { HasSettings = true };
         }
@@ -80,6 +96,7 @@ namespace GalCompanion
             RunOnUi(() =>
             {
                 var wasVisible = bubble != null && bubble.IsVisible;
+                CancelComposer();
                 CloseBubbleCore();
                 if (wasVisible && runningGame != null)
                 {
@@ -413,7 +430,11 @@ namespace GalCompanion
 
         private void HideBubble()
         {
-            RunOnUi(() => bubble?.Hide());
+            RunOnUi(() =>
+            {
+                CancelComposer();
+                bubble?.Hide();
+            });
         }
 
         private void CloseBubble()
@@ -424,6 +445,7 @@ namespace GalCompanion
         // UI スレッド上で呼ぶこと
         private void CloseBubbleCore()
         {
+            CancelComposer();
             bubble?.Close();
             bubble = null;
         }
@@ -581,19 +603,152 @@ namespace GalCompanion
         // 左鍵/熱鍵：記錄（Trilium、可選本地歸檔）；右鍵：只進剪貼簿
         private void CaptureRecord()
         {
-            Capture(clipboardOnly: false);
+            RunOnUi(() =>
+            {
+                switch (composer.Press())
+                {
+                    case CapturePress.OpenComposer:
+                        OpenComposer();
+                        break;
+                    case CapturePress.Commit:
+                        CommitComposer();
+                        break;
+                    default:
+                        Capture(false, null, IntPtr.Zero);
+                        break;
+                }
+            });
         }
 
         private void CaptureClipboard()
         {
-            Capture(clipboardOnly: true);
+            // 入力欄が開いている間は前景がゲームではないので、控えておいた窓を撮る
+            Capture(true, null, composerWindow != null ? composeTarget : IntPtr.Zero);
         }
 
-        private void Capture(bool clipboardOnly)
+        /// <summary>入力欄を気泡の隣に出す。ここではまだ撮らない。</summary>
+        private void OpenComposer()
+        {
+            // 入力欄にフォーカスが移る前に、今のゲーム窓を控えておく
+            composeTarget = NativeMethods.GetForegroundWindow();
+
+            var win = new ComposerWindow(runningGame?.Name);
+            win.Committed += CommitComposer;
+            win.Cancelled += CancelComposer;
+            composerWindow = win;
+
+            // 既定位置(0,0)で一瞬光るのを避けるため、出す前に概算で置いてから実寸で直す
+            PlaceComposer(win);
+            win.Show();
+            PlaceComposer(win);
+            win.Activate();
+            bubble?.SetComposing(true);
+        }
+
+        private void PlaceComposer(ComposerWindow win)
+        {
+            // SizeToContent なので Show 前は実寸が無い。その時は概算で置く
+            var height = win.ActualHeight > 0 ? win.ActualHeight : ComposerPlacement.NominalHeight;
+
+            if (bubble == null)
+            {
+                double cx, cy;
+                BubblePlacement.Center(win.Width, height, WorkArea(), out cx, out cy);
+                win.Left = cx;
+                win.Top = cy;
+                return;
+            }
+
+            var anchor = new ScreenRect(
+                bubble.Left, bubble.Top,
+                bubble.ActualWidth > 0 ? bubble.ActualWidth : BubblePlacement.NominalWidth,
+                bubble.ActualHeight > 0 ? bubble.ActualHeight : BubblePlacement.NominalHeight);
+
+            double left, top;
+            ComposerPlacement.Resolve(anchor, win.Width, height, WorkArea(), out left, out top);
+            win.Left = left;
+            win.Top = top;
+        }
+
+        /// <summary>入力欄の本文を添えて撮る。UI スレッド上で呼ぶこと。</summary>
+        private void CommitComposer()
+        {
+            var win = composerWindow;
+            if (win == null)
+            {
+                return;
+            }
+            composer.Cancel();
+            var text = win.Text;
+            var target = composeTarget;
+
+            // 先に閉じてゲームを前面に戻す。screencrop で入力欄が写り込まないように
+            CloseComposerCore();
+            SettleBeforeCapture(target);
+
+            Capture(false, text, target);
+        }
+
+        /// <summary>書きかけを捨てて閉じる。UI スレッド上で呼ぶこと。</summary>
+        private void CancelComposer()
+        {
+            composer.Cancel();
+            CloseComposerCore();
+        }
+
+        private void CloseComposerCore()
+        {
+            var win = composerWindow;
+            composerWindow = null;
+            if (win == null)
+            {
+                return;
+            }
+
+            win.Committed -= CommitComposer;
+            win.Cancelled -= CancelComposer;
+            win.Close();
+            bubble?.SetComposing(false);
+
+            // フォーカスを奪ったままだとゲームの入力が効かないので必ず戻す
+            var target = composeTarget;
+            composeTarget = IntPtr.Zero;
+            if (target != IntPtr.Zero && NativeMethods.IsWindow(target))
+            {
+                NativeMethods.SetForegroundWindow(target);
+            }
+        }
+
+        // 閉じた入力欄が画面から消えるまで待つ。UI スレッドを少し止めるが体感できる長さではない
+        private static void SettleBeforeCapture(IntPtr target)
+        {
+            if (target == IntPtr.Zero)
+            {
+                return;
+            }
+            PumpRender();
+            Thread.Sleep(CaptureSettleMs);
+            PumpRender();
+        }
+
+        // Render 優先度までしか流さない。Input を流すと連打が割り込んで
+        // 撮っている最中に入力欄がもう一度開いてしまう
+        private static void PumpRender()
+        {
+            var dispatcher = Application.Current?.Dispatcher;
+            if (dispatcher == null || !dispatcher.CheckAccess())
+            {
+                return;
+            }
+            dispatcher.Invoke(new Action(() => { }), DispatcherPriority.Render);
+        }
+
+        private void Capture(bool clipboardOnly, string note, IntPtr target)
         {
             try
             {
-                using (var bmp = CaptureService.CaptureForegroundWindow(config.CaptureMode, config.ClientAreaOnly))
+                var hwnd = target != IntPtr.Zero ? target : NativeMethods.GetForegroundWindow();
+                using (var bmp = CaptureService.CaptureWindow(hwnd, config.CaptureMode, config.ClientAreaOnly))
                 {
                     if (bmp == null)
                     {
@@ -626,8 +781,17 @@ namespace GalCompanion
                         }
                         if (trilium != null && config.TriliumSendScreenshots && runningGame != null)
                         {
-                            SendToTrilium(TriliumTarget.Impressions, pngBytes, null);
+                            SendToTrilium(TriliumTarget.Impressions, pngBytes, note);
                             recorded = true;
+                        }
+                        else if (!string.IsNullOrWhiteSpace(note))
+                        {
+                            // 送り先が消えた状態で本文だけ握りつぶすと書いた分が消えるので知らせる
+                            logger.Warn("GalCompanion：Trilium が無効なので補充描述を送れませんでした");
+                            PlayniteApi.Notifications.Add(new NotificationMessage(
+                                "galcompanion-note-dropped",
+                                "GalCompanion：Trilium 沒有啟用，補充描述沒有送出。",
+                                NotificationType.Error));
                         }
                         if (!recorded)
                         {

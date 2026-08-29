@@ -15,6 +15,7 @@ namespace GalCompanion
         private bool clientAreaOnly = true;
         private bool saveToFile;
         private bool playSound = true;
+        private bool captureWithNote = true;
         private double bubbleOpacity = 0.55;
         private string screenshotRoot = string.Empty;
         private bool triliumEnabled;
@@ -77,6 +78,14 @@ namespace GalCompanion
         {
             get => saveToFile;
             set => SetValue(ref saveToFile, value);
+        }
+
+        // true = 📷 を押すと先に入力欄が出て、もう一度押すと本文つきで送る。
+        // その場で一言残せるようにするための 2 段押し。何も書かなければ素の截圖と同じ。
+        public bool CaptureWithNote
+        {
+            get => captureWithNote;
+            set => SetValue(ref captureWithNote, value);
         }
 
         public bool PlaySound
@@ -220,6 +229,7 @@ namespace GalCompanion
                 ClientAreaOnly = ClientAreaOnly,
                 SaveToFile = SaveToFile,
                 PlaySound = PlaySound,
+                CaptureWithNote = CaptureWithNote,
                 BubbleOpacity = BubbleOpacity,
                 ScreenshotRoot = ScreenshotRoot,
                 TriliumEnabled = TriliumEnabled,

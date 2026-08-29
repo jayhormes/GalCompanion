@@ -19,6 +19,9 @@ namespace GalCompanion
             var panel = new StackPanel { Margin = new Thickness(0, 0, 10, 10) };
 
             panel.Children.Add(Header("截圖"));
+            panel.Children.Add(CheckRow("按 📷 先開輸入框，再按一次才送出", "Settings.CaptureWithNote",
+                "可以在遊戲當下直接寫一句補充描述，跟截圖一起送到 Trilium。"
+                + "不寫就是連按兩次 📷。只有啟用 Trilium 並開啟「截圖自動送 Trilium」時才生效。"));
             panel.Children.Add(CheckRow("截圖後播提示音", "Settings.PlaySound", null));
             panel.Children.Add(CheckRow("只截遊戲畫面（不含視窗邊框）", "Settings.ClientAreaOnly", null));
             panel.Children.Add(CheckRow("左鍵截圖也存一份 PNG 到本機", "Settings.SaveToFile",

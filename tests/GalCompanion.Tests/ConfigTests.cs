@@ -17,6 +17,7 @@ namespace GalCompanion.Tests
             Assert.Equal(0.55, config.BubbleOpacity, 3);
             Assert.Null(config.BubbleX);
             Assert.Null(config.BubbleY);
+            Assert.True(config.CaptureWithNote);
             Assert.Equal(string.Empty, config.ScreenshotRoot);
             Assert.False(config.TriliumEnabled);
             Assert.Equal(string.Empty, config.TriliumUrl);

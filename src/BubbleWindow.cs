@@ -13,6 +13,10 @@ namespace GalCompanion
     {
         public event Action<double, double> Moved;
 
+        private readonly Button captureButton;
+        private readonly double idleOpacity;
+        private bool composing;
+
         // onCapture＝左鍵（記錄：Trilium/歸檔）、onClipboard＝右鍵（只進剪貼簿）
         public BubbleWindow(Action onCapture, Action onClipboard, Action onNote, double idleOpacity)
         {
@@ -25,6 +29,7 @@ namespace GalCompanion
             ShowActivated = false;
             SizeToContent = SizeToContent.WidthAndHeight;
             Opacity = idleOpacity;
+            this.idleOpacity = idleOpacity;
 
             var grip = new Border
             {
@@ -46,7 +51,7 @@ namespace GalCompanion
                 Moved?.Invoke(Left, Top);
             };
 
-            var button = new Button
+            captureButton = new Button
             {
                 Content = "📷",
                 FontSize = 22,
@@ -57,8 +62,8 @@ namespace GalCompanion
                 Cursor = Cursors.Hand,
                 Focusable = false
             };
-            button.Click += (s, e) => onCapture?.Invoke();
-            button.MouseRightButtonUp += (s, e) =>
+            captureButton.Click += (s, e) => onCapture?.Invoke();
+            captureButton.MouseRightButtonUp += (s, e) =>
             {
                 onClipboard?.Invoke();
                 e.Handled = true;
@@ -66,7 +71,7 @@ namespace GalCompanion
 
             var panel = new StackPanel { Orientation = Orientation.Horizontal };
             panel.Children.Add(grip);
-            panel.Children.Add(button);
+            panel.Children.Add(captureButton);
 
             if (onNote != null)
             {
@@ -93,7 +98,7 @@ namespace GalCompanion
             };
 
             MouseEnter += (s, e) => Opacity = 1.0;
-            MouseLeave += (s, e) => Opacity = idleOpacity;
+            MouseLeave += (s, e) => Opacity = composing ? 1.0 : this.idleOpacity;
 
             SourceInitialized += (s, e) =>
             {
@@ -102,6 +107,15 @@ namespace GalCompanion
                 NativeMethods.SetWindowLong(hwnd, NativeMethods.GWL_EXSTYLE,
                     exStyle | NativeMethods.WS_EX_NOACTIVATE | NativeMethods.WS_EX_TOOLWINDOW);
             };
+        }
+
+        /// <summary>入力欄を開いている間は「もう一度押せば送る」と分かる見た目にする。</summary>
+        public void SetComposing(bool value)
+        {
+            composing = value;
+            captureButton.Content = value ? "✅" : "📷";
+            captureButton.ToolTip = value ? "送出（含輸入框的文字）" : null;
+            Opacity = value ? 1.0 : idleOpacity;
         }
     }
 }

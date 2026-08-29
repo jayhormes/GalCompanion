@@ -8,8 +8,14 @@ namespace GalCompanion
     {
         public static Bitmap CaptureForegroundWindow(string mode, bool clientAreaOnly)
         {
-            var hwnd = NativeMethods.GetForegroundWindow();
-            if (hwnd == IntPtr.Zero)
+            return CaptureWindow(NativeMethods.GetForegroundWindow(), mode, clientAreaOnly);
+        }
+
+        // 入力欄を開いている間はゲームが前景ではなくなるので、
+        // 開いた時点で覚えておいたウィンドウを撮れるようにする。
+        public static Bitmap CaptureWindow(IntPtr hwnd, string mode, bool clientAreaOnly)
+        {
+            if (hwnd == IntPtr.Zero || !NativeMethods.IsWindow(hwnd))
             {
                 return null;
             }

@@ -1,4 +1,7 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
 using Xunit;
 
 namespace GalCompanion.Tests
@@ -226,6 +229,67 @@ namespace GalCompanion.Tests
             clone.SaveRules.Clear();
             Assert.Equal("https://a.example.com", original.TriliumUrl);
             Assert.Single(original.SaveRules);
+        }
+
+        // Clone に足し忘れると設定 UI で「保存したのに戻る」項目が出るので全プロパティを機械的に確認する
+        [Fact]
+        public void Clone_covers_every_property()
+        {
+            var original = new GalCompanionConfig();
+            var props = typeof(GalCompanionConfig)
+                .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Where(p => p.CanRead && p.CanWrite)
+                .ToList();
+
+            Assert.NotEmpty(props);
+            foreach (var prop in props)
+            {
+                prop.SetValue(original, DistinctValue(prop.PropertyType, prop.Name));
+            }
+
+            var clone = original.Clone();
+
+            foreach (var prop in props)
+            {
+                var expected = prop.GetValue(original);
+                var actual = prop.GetValue(clone);
+                if (expected is Dictionary<string, SaveRule> dict)
+                {
+                    Assert.Equal(dict.Count, ((Dictionary<string, SaveRule>)actual).Count);
+                    continue;
+                }
+                Assert.True(Equals(expected, actual), $"Clone 沒有複製 {prop.Name}");
+            }
+        }
+
+        private static object DistinctValue(Type type, string name)
+        {
+            if (type == typeof(string))
+            {
+                return "v-" + name;
+            }
+            if (type == typeof(bool))
+            {
+                return true;
+            }
+            if (type == typeof(int))
+            {
+                return 17;
+            }
+            if (type == typeof(double))
+            {
+                return 0.42;
+            }
+            if (type == typeof(double?))
+            {
+                return (double?)12.5;
+            }
+            if (type == typeof(Dictionary<string, SaveRule>))
+            {
+                return new Dictionary<string, SaveRule> { { "g-" + name, new SaveRule() } };
+            }
+            throw new InvalidOperationException(
+                $"{name} は {type} 型。DistinctValue に対応を足すこと");
         }
 
         [Fact]
