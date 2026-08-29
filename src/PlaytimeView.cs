@@ -190,8 +190,10 @@ namespace GalCompanion
             {
                 return Color.FromArgb(0x30, 0x88, 0x88, 0x88);
             }
-            // 濃さは 4 段。透明度で出すのでテーマの背景に馴染む
-            var alpha = (byte)(0x40 + 0x30 * Math.Min(level, 4));
+            // 濃さは 4 段。透明度で出すのでテーマの背景に馴染む。
+            // 0x40 + 0x30*level だと level 4 で 0x100 になって byte が一周し、
+            // いちばん濃いはずの日が透明になる
+            var alpha = (byte)(0x40 + 0x30 * (Math.Min(level, 4) - 1));
             return Color.FromArgb(alpha, Base.R, Base.G, Base.B);
         }
 
