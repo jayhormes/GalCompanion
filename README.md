@@ -7,6 +7,7 @@ Playnite 外掛。給 GalGame 玩家的遊玩伴侶：截圖筆記、（規劃�
 - 遊戲啟動時顯示**浮動氣泡窗**（不搶焦點）；左側把手可拖曳，位置會記住，透明度可調（`BubbleOpacity`）
 - 📷 **左鍵＝記錄**：送 Trilium（啟用時）＋本地歸檔（`SaveToFile` 開啟時）；兩者都沒開就退回剪貼簿
 - 📷 **右鍵＝只進剪貼簿**：不落地、不上傳，臨時貼圖用
+- 📝 **記一筆**：寫進 Trilium 的子議題筆記（沒設定 Trilium 時按了會告訴你要去哪裡設）
 - 可選全域熱鍵（預設 `Shift+F12`，等同左鍵；config 留空停用）
 - 截圖歸檔路徑相容 ExtraMetadata 慣例：`<Playnite設定目錄>\ExtraMetadata\games\<GameId>\screenshots\`
 - 遊戲右鍵選單 → GalCompanion → 打開截圖資料夾

@@ -75,11 +75,15 @@ namespace GalCompanion
             InitTrilium();
             InitSaveSync();
             InitHotkey();
+
+            // 透明度などは作り直さないと反映されないので、表示中なら作り直す
             RunOnUi(() =>
             {
-                if (bubble != null)
+                var wasVisible = bubble != null && bubble.IsVisible;
+                CloseBubbleCore();
+                if (wasVisible && runningGame != null)
                 {
-                    bubble.Opacity = GalCompanionConfig.ClampOpacity(config.BubbleOpacity);
+                    ShowBubble();
                 }
             });
         }
@@ -386,7 +390,7 @@ namespace GalCompanion
                     bubble = new BubbleWindow(
                         CaptureRecord,
                         CaptureClipboard,
-                        trilium == null ? (Action)null : OpenNoteInput,
+                        OpenNoteInput,
                         GalCompanionConfig.ClampOpacity(config.BubbleOpacity));
                     bubble.Moved += (x, y) =>
                     {
@@ -414,11 +418,14 @@ namespace GalCompanion
 
         private void CloseBubble()
         {
-            RunOnUi(() =>
-            {
-                bubble?.Close();
-                bubble = null;
-            });
+            RunOnUi(CloseBubbleCore);
+        }
+
+        // UI スレッド上で呼ぶこと
+        private void CloseBubbleCore()
+        {
+            bubble?.Close();
+            bubble = null;
         }
 
         public override IEnumerable<GameMenuItem> GetGameMenuItems(GetGameMenuItemsArgs args)
@@ -647,6 +654,17 @@ namespace GalCompanion
 
         private void OpenNoteInput()
         {
+            if (trilium == null)
+            {
+                // ボタンは常に出しておき、押されたら設定場所を案内する
+                PlayniteApi.Dialogs.ShowMessage(
+                    "還沒設定 Trilium，所以記錄沒有地方可以寫。\n\n"
+                    + "到「附加元件 → 擴充功能 → GalCompanion」的 Trilium 區塊，"
+                    + "勾選啟用並填入伺服器網址與 ETAPI token。",
+                    "GalCompanion");
+                return;
+            }
+
             RunOnUi(() =>
             {
                 var win = new NoteInputWindow(runningGame?.Name);
