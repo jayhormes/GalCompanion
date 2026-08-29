@@ -24,7 +24,7 @@ namespace GalCompanion
         {
             this.client = client;
             this.dateFormat = string.IsNullOrWhiteSpace(dateFormat) ? "yyyy.MM.dd" : dateFormat;
-            this.impressionsTitle = string.IsNullOrWhiteSpace(impressionsTitle) ? "遊戲心得" : impressionsTitle;
+            this.impressionsTitle = string.IsNullOrWhiteSpace(impressionsTitle) ? "遊戲筆記" : impressionsTitle;
             this.translationTitle = string.IsNullOrWhiteSpace(translationTitle) ? "翻譯問題" : translationTitle;
         }
 
