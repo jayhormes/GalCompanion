@@ -4,35 +4,61 @@ using System.Text;
 namespace GalCompanion
 {
     /// <summary>
-    /// ノート標題のテンプレート。{game} を今遊んでいるタイトルに差し替える。
-    /// 「XXX 遊戲心得」のようにゲームごとにノートを分けるための仕組みで、
-    /// {game} を書かなければ従来どおり全タイトル共通の 1 枚になる。
+    /// ノート標題の組み立て。「XXX 遊戲心得」のようにゲームごとにノートを分けるためのもの。
+    /// 既定はタイトルの頭にゲーム名を足すだけなので、既存の設定値をそのまま活かせる。
+    /// 置き場所を自分で決めたいときは標題に {game} と書く。
     /// </summary>
     internal static class TriliumTitles
     {
         internal const string GamePlaceholder = "{game}";
 
-        public const string DefaultImpressions = "{game} 遊戲心得";
+        public const string DefaultImpressions = "遊戲心得";
         public const string DefaultTranslation = "翻譯問題";
 
-        public static bool IsPerGame(string template)
+        /// <summary>テンプレートが自分で置き場所を指定しているか。指定があればそちらを優先する。</summary>
+        public static bool HasPlaceholder(string template)
         {
             return !string.IsNullOrEmpty(template)
                 && template.IndexOf(GamePlaceholder, StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
-        /// <summary>
-        /// テンプレートを実際の標題にする。ゲーム名が取れないとき（Playnite 外で起動した等）は
-        /// プレースホルダを消して詰めるので「遊戲心得」になる。
-        /// </summary>
-        public static string Format(string template, string gameName, string fallbackTemplate)
+        /// <summary>結果の標題にゲーム名が入るか。エントリ見出しの重複を避けるのに使う。</summary>
+        public static bool CarriesGameName(string template, bool prefixWithGame)
         {
-            var result = Collapse(Substitute(template, gameName));
+            return HasPlaceholder(template) || prefixWithGame;
+        }
+
+        /// <summary>
+        /// テンプレートを実際の標題にする。
+        /// {game} が書いてあればそこへ、無ければ prefixWithGame のときだけ頭に付ける。
+        /// ゲーム名が取れないとき（Playnite 外で起動した等）はどちらもせず素の標題になる。
+        /// </summary>
+        public static string Format(
+            string template, string gameName, string fallbackTemplate, bool prefixWithGame = false)
+        {
+            var name = (gameName ?? string.Empty).Trim();
+            var body = string.IsNullOrWhiteSpace(template) ? fallbackTemplate : template;
+
+            string result;
+            if (HasPlaceholder(body))
+            {
+                result = Collapse(Substitute(body, name));
+            }
+            else
+            {
+                result = Collapse(body);
+                if (prefixWithGame && name.Length > 0)
+                {
+                    result = Collapse(name + " " + result);
+                }
+            }
+
             if (!string.IsNullOrEmpty(result))
             {
                 return result;
             }
-            return Collapse(Substitute(fallbackTemplate, gameName));
+            // {game} だけのテンプレートでゲーム名も無い、のような場合に空標題を作らせない
+            return Collapse(Substitute(fallbackTemplate, name));
         }
 
         private static string Substitute(string template, string gameName)

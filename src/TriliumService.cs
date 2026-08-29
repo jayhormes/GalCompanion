@@ -18,10 +18,12 @@ namespace GalCompanion
         private readonly string dateFormat;
         private readonly string impressionsTemplate;
         private readonly string translationTemplate;
+        private readonly bool prefixWithGame;
 
         public TriliumService(TriliumClient client, string dateFormat,
-            string impressionsTitle, string translationTitle)
+            string impressionsTitle, string translationTitle, bool notePerGame = true)
         {
+            this.prefixWithGame = notePerGame;
             this.client = client;
             this.dateFormat = string.IsNullOrWhiteSpace(dateFormat) ? "yyyy.MM.dd" : dateFormat;
             this.impressionsTemplate = string.IsNullOrWhiteSpace(impressionsTitle)
@@ -30,17 +32,21 @@ namespace GalCompanion
                 ? TriliumTitles.DefaultTranslation : translationTitle;
         }
 
-        /// <summary>心得ノートをゲームごとに分ける設定か。エントリ見出しの重複を避けるのに使う。</summary>
-        public bool ImpressionsArePerGame => TriliumTitles.IsPerGame(impressionsTemplate);
+        /// <summary>心得ノートの標題にゲーム名が入るか。エントリ見出しの重複を避けるのに使う。</summary>
+        public bool ImpressionsArePerGame
+            => TriliumTitles.CarriesGameName(impressionsTemplate, prefixWithGame);
 
         public string ImpressionsTitleFor(string gameName)
         {
-            return TriliumTitles.Format(impressionsTemplate, gameName, TriliumTitles.DefaultImpressions);
+            return TriliumTitles.Format(
+                impressionsTemplate, gameName, TriliumTitles.DefaultImpressions, prefixWithGame);
         }
 
+        // 翻譯問題は心得ノートの子なので、ゲーム名を重ねない（{game} と自分で書いたときだけ入る）
         public string TranslationTitleFor(string gameName)
         {
-            return TriliumTitles.Format(translationTemplate, gameName, TriliumTitles.DefaultTranslation);
+            return TriliumTitles.Format(
+                translationTemplate, gameName, TriliumTitles.DefaultTranslation);
         }
 
         public string FormatDate(DateTime date)

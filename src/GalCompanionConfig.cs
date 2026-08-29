@@ -24,6 +24,7 @@ namespace GalCompanion
         private string triliumParentNoteId = string.Empty;
         private bool triliumSendScreenshots = true;
         private string triliumDateFormat = "yyyy.MM.dd";
+        private bool triliumNotePerGame = true;
         private string triliumImpressionsTitle = TriliumTitles.DefaultImpressions;
         private string triliumTranslationTitle = "翻譯問題";
         private bool saveSyncEnabled;
@@ -149,6 +150,14 @@ namespace GalCompanion
         }
 
         // 日期底下的心得 note 標題（📷 截圖寫這裡）
+        // true = 心得筆記標題前面自動加上遊戲名，變成「XXX 遊戲心得」，每款遊戲各一則。
+        // 想自己決定位置就在標題裡寫 {game}，那時這個開關不生效
+        public bool TriliumNotePerGame
+        {
+            get => triliumNotePerGame;
+            set => SetValue(ref triliumNotePerGame, value);
+        }
+
         public string TriliumImpressionsTitle
         {
             get => triliumImpressionsTitle;
@@ -238,6 +247,7 @@ namespace GalCompanion
                 TriliumParentNoteId = TriliumParentNoteId,
                 TriliumSendScreenshots = TriliumSendScreenshots,
                 TriliumDateFormat = TriliumDateFormat,
+                TriliumNotePerGame = TriliumNotePerGame,
                 TriliumImpressionsTitle = TriliumImpressionsTitle,
                 TriliumTranslationTitle = TriliumTranslationTitle,
                 SaveSyncEnabled = SaveSyncEnabled,

@@ -10,18 +10,20 @@ namespace GalCompanion.Tests
         private static readonly DateTime Ts = new DateTime(2026, 8, 28, 21, 30, 0);
         private const string Base = "http://nas:8080";
 
-        // 従来どおりの固定標題（全タイトル共通の 1 枚）
+        // 全タイトル共通の 1 枚
         private static TriliumService Service(FakeHttpHandler handler)
         {
             return new TriliumService(
-                new TriliumClient(Base, "t", handler), "yyyy.MM.dd", "遊戲心得", "翻譯問題");
+                new TriliumClient(Base, "t", handler), "yyyy.MM.dd", "遊戲心得", "翻譯問題",
+                notePerGame: false);
         }
 
-        // ゲームごとに分ける標題
+        // 既定：標題の頭にゲーム名が付く
         private static TriliumService PerGameService(FakeHttpHandler handler)
         {
             return new TriliumService(
-                new TriliumClient(Base, "t", handler), "yyyy.MM.dd", "{game} 遊戲心得", "翻譯問題");
+                new TriliumClient(Base, "t", handler), "yyyy.MM.dd", "遊戲心得", "翻譯問題",
+                notePerGame: true);
         }
 
         // --- 日付ノートの選別（Trilium の全文検索は曖昧一致） ---
@@ -281,13 +283,15 @@ namespace GalCompanion.Tests
         }
 
         [Fact]
-        public void Per_game_mode_is_reported_from_the_template()
+        public void Per_game_mode_is_reported_and_applied()
         {
             var handler = new FakeHttpHandler();
             using (var perGame = PerGameService(handler))
             {
                 Assert.True(perGame.ImpressionsArePerGame);
                 Assert.Equal("A 遊戲心得", perGame.ImpressionsTitleFor("A"));
+                // 翻譯問題は心得の子なので名前を重ねない
+                Assert.Equal("翻譯問題", perGame.TranslationTitleFor("A"));
             }
             using (var shared = Service(handler))
             {

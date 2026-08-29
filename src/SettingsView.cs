@@ -51,9 +51,11 @@ namespace GalCompanion
                 "從 Trilium 網址列的 #root/xxxxx 抓最後那段。"));
             panel.Children.Add(TextRow("日期格式", "Settings.TriliumDateFormat",
                 "用來比對日記標題，例 yyyy.MM.dd。"));
+            panel.Children.Add(CheckRow("每款遊戲各一則（標題前面加遊戲名）", "Settings.TriliumNotePerGame",
+                "開：「遊戲心得」→「モザイクの天使 遊戲心得」。關：當天所有遊戲共用同一則。"));
             panel.Children.Add(TextRow("心得筆記標題", "Settings.TriliumImpressionsTitle",
-                "📷 寫這裡。{game} 會換成遊戲名，例「{game} 遊戲心得」→「モザイクの天使 遊戲心得」。"
-                + "不寫 {game} 就是所有遊戲共用同一則。"));
+                "📷 寫這裡。想自己決定遊戲名的位置就寫 {game}，例「【{game}】心得」；"
+                + "寫了 {game} 就以它為準，上面的開關不生效。"));
             panel.Children.Add(TextRow("子議題筆記標題", "Settings.TriliumTranslationTitle",
                 "📝 寫這裡，建在心得筆記底下。一樣支援 {game}。"));
             panel.Children.Add(CheckRow("截圖自動送 Trilium", "Settings.TriliumSendScreenshots",

@@ -54,8 +54,9 @@ Journal / 2026 / 08 - 八月 / 29 - 週六
 | `TriliumToken` | 空 | Trilium → Options → ETAPI 產生 |
 | `TriliumParentNoteId` | 空 | **只有 Trilium 日期筆記端點不能用時**才會用到：在這個 note 底下建日期 note |
 | `TriliumDateFormat` | `yyyy.MM.dd` | 同上，退路用的標題比對格式 |
-| `TriliumImpressionsTitle` | `{game} 遊戲心得` | 日期底下的筆記標題（📷 寫這裡）。`{game}` 會換成遊戲名 → 每款遊戲各一則；不寫 `{game}` 就是所有遊戲共用一則。已存在就直接沿用 |
-| `TriliumTranslationTitle` | `翻譯問題` | 心得底下的子議題 note 標題（📝 寫這裡）。一樣支援 `{game}` |
+| `TriliumNotePerGame` | `true` | 心得筆記標題前面自動加遊戲名 → 每款遊戲各一則；`false` 則當天所有遊戲共用一則 |
+| `TriliumImpressionsTitle` | `遊戲心得` | 日期底下的筆記標題（📷 寫這裡）。想自己決定遊戲名的位置就寫 `{game}`，例 `【{game}】心得`；寫了就以它為準，`TriliumNotePerGame` 不生效。已存在就直接沿用 |
+| `TriliumTranslationTitle` | `翻譯問題` | 心得底下的子議題 note 標題（📝 寫這裡）。它是心得的子頁，所以不會自動加遊戲名；要加就自己寫 `{game}` |
 | `TriliumSendScreenshots` | `true` | 📷 自動 append；`false` 則只有 📝 手動記錄才送（📝 不受這個設定影響） |
 | `SaveSyncEnabled` | `false` | 開啟存檔同步 |
 | `RclonePath` | `rclone` | rclone.exe 路徑；在 PATH 裡就不用改 |

@@ -159,7 +159,8 @@ namespace GalCompanion
                     new TriliumClient(config.TriliumUrl, config.TriliumToken),
                     config.TriliumDateFormat,
                     config.TriliumImpressionsTitle,
-                    config.TriliumTranslationTitle);
+                    config.TriliumTranslationTitle,
+                    config.TriliumNotePerGame);
                 logger.Info("GalCompanion Trilium 整合已啟用");
             }
         }
@@ -677,7 +678,9 @@ namespace GalCompanion
             {
                 return target == TriliumTarget.Translation
                     ? TriliumTitles.DefaultTranslation
-                    : TriliumTitles.Format(TriliumTitles.DefaultImpressions, name, TriliumTitles.DefaultImpressions);
+                    : TriliumTitles.Format(
+                        config?.TriliumImpressionsTitle, name,
+                        TriliumTitles.DefaultImpressions, config?.TriliumNotePerGame == true);
             }
             return target == TriliumTarget.Translation
                 ? service.TranslationTitleFor(name)
