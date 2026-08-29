@@ -1,23 +1,26 @@
-First release.
+Two ways to record what happens while you play, and playtime that follows you
+between machines.
 
-A Playnite plugin for playing visual novels: take screenshots and write notes
-without leaving the game, and sync save files between machines.
+**Write the note while you are still in the game**
 
-**Screenshots and notes**
+Pressing 📷 no longer takes the shot straight away. It opens a small text box
+next to the bubble. Type a line, press 📷 again (or Enter, or the Send button)
+and the screenshot goes to Trilium with your note attached. Type nothing and it
+is just two clicks for a plain screenshot.
 
-- A floating bubble appears while a game is running. It never takes focus, so
-  the game stays in front.
-- Press 📷 once to open a text box, type a note, press it again to send. The
-  screenshot and the note go to Trilium together. Type nothing and it is just
-  two clicks for a plain screenshot.
-- 📝 works the same way but writes to the "translation problems" sub-note.
-- Right-click 📷 copies the screenshot to the clipboard only.
-- Optional global hotkey (Shift+F12 by default).
+📝 works the same way, but writes to the "translation problems" sub-note, and it
+attaches a screenshot too — a note about a bad line is hard to read later without
+the line in front of you. Uncheck "attach screenshot" in the box for text only.
 
-**Trilium**
+The box takes keyboard focus, so the game window is remembered when the box
+opens and that window is what gets captured — not whatever is in front at the
+time. The box is closed and the game brought back before the shot is taken, so
+it never appears in the picture.
 
-Entries are appended under today's journal note, one note per game, with a
-sub-note for translation problems:
+**One Trilium note per game per day**
+
+Screenshots used to land in a single shared note. Now the day's journal note
+gets one child per game:
 
 ```
 2026-08-30
@@ -25,16 +28,35 @@ sub-note for translation problems:
      └ 翻譯問題
 ```
 
-Only the server URL and an ETAPI token are needed. The day note comes from
-Trilium's own calendar, so it fits an existing journal without extra setup.
+The day note comes from Trilium's own calendar, so it fits an existing journal
+without any parent note to configure. Turn off "one note per game" to go back to
+a single shared note, or put `{game}` in the title to choose where the name goes.
 
-**Save sync**
+**Playtime and a calendar of what you played**
 
-Optional. Uses rclone against any remote. Decides pull/push/conflict before
-the game starts, pushes after it exits, and retries a missed push on the next
-launch. Conflicts always ask; nothing is overwritten silently.
+Every session is recorded as a start time and a length. The sidebar shows a year
+of activity as a calendar grid, plus your longest-played games. Playnite's
+playtime is set to the larger of its current value and the recorded total, so
+imported playtime from Steam or GOG is never wiped.
+
+**Playtime that syncs between machines**
+
+Optional, over the same rclone remote as save sync. Each machine writes only its
+own file and reads the union of all of them, so two machines playing the same
+game never overwrite each other and there is nothing to resolve. Sessions are
+pulled when Playnite starts and pushed when a game ends or Playnite closes.
+
+**LunaImport**
+
+A separate tool in the release, for a one-time move from LunaTranslator. It
+reads LunaTranslator's session database, matches games by executable path
+(including games launched through Locale Emulator), and writes the history into
+Playnite and into the activity calendar. Run it with Playnite closed. Without
+`--apply` it only prints what it would do. Everything it touches is backed up
+first, and running it twice does not double count.
 
 **Also**
 
-- Locale Emulator batch conversion from the game context menu.
-- Everything is configured in Playnite's add-on settings.
+- Settings moved into Playnite's add-on settings; the config file is still read.
+- A button to bring the bubble back to the centre of the screen when it ends up
+  off-screen after a resolution or monitor change.
