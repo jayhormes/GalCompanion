@@ -16,6 +16,37 @@ Playnite 外掛。給 GalGame 玩家的遊玩伴侶：截圖筆記、（規劃�
 - **Trilium 直送**（Phase 2）：用 Trilium 內建的日期筆記（Journal/年/月/日）定位當天，底下**每款遊戲一則**「<遊戲名> 遊戲心得」，📷 寫這裡；再下一層的「翻譯問題」給 📝
 - **存檔跨裝置同步**（Phase 3）：啟動前自動判定拉/推/衝突、結束後自動推上 NAS、當機漏推下次啟動補推；衝突一律跳對話框不自動覆蓋；遊戲右鍵選單可手動推/拉
 
+## LunaImport — 把 LunaTranslator 的遊玩時間搬進 Playnite
+
+`tools/LunaImport` 是獨立的小工具（不是插件），一次性遷移用。從 Release 或 Actions artifact 下載 `LunaImport.zip`，解壓後在命令列跑。
+
+LunaTranslator 把每一次開關遊戲都記在 `userconfig\savegame.db`（SQLite），所以搬過來的不只是總時數，逐次紀錄也可以寫進 [GameActivity](https://github.com/Lacro59/playnite-gameactivity-plugin)，圖表就會顯示真實的歷史分布，而不是全部堆在匯入那天。
+
+```
+LunaImport.exe --luna "D:\LunaTranslator"
+```
+
+不加 `--apply` 只會印報告，什麼都不動。確認配對正確後再加：
+
+```
+LunaImport.exe --luna "D:\LunaTranslator" --apply
+```
+
+| 選項 | 說明 |
+|---|---|
+| `--luna <路徑>` | LunaTranslator 資料夾（或直接指到它的 `userconfig`） |
+| `--playnite <路徑>` | 預設 `%AppData%\Playnite` |
+| `--apply` | 實際寫入 |
+| `--overwrite` | Playnite 已有時數的也覆蓋（預設跳過） |
+| `--no-sessions` | 只寫總時數，不寫 GameActivity |
+| `--backup <路徑>` | 備份 zip 位置，預設 `<Playnite>\LunaImportBackup` |
+
+- **跑之前要關掉 Playnite**（工具會擋）。開著的話記憶體裡的舊資料會蓋回去。
+- 寫入前一定會把 `library\games` 和 GameActivity 的資料各備份成一個 zip。
+- 配對優先用 exe 路徑，找不到才用標題。Locale Emulator 轉換過的遊戲，`Path` 是 `LEProc.exe`，工具會去看參數裡的 exe。標題重複的不會亂猜，一律列為未配對。
+- 重跑不會重複累加 —— GameActivity 那邊以 session 開始時間去重。
+- 不需要裝 SQLite：走 Windows 10 以後內建的 `winsqlite3.dll`。
+
 ## 安裝
 
 1. 從 GitHub Actions artifact 或 Release 下載 `GalCompanion.pext`

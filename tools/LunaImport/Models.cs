@@ -1,0 +1,68 @@
+using System;
+using System.Collections.Generic;
+
+namespace LunaImport
+{
+    /// <summary>LunaTranslator の 1 回の起動から終了まで。</summary>
+    internal sealed class PlaySession
+    {
+        public DateTime Start;
+        public DateTime End;
+
+        public long Seconds => (long)Math.Round((End - Start).TotalSeconds);
+    }
+
+    internal sealed class LunaGame
+    {
+        public string Uid;
+        public string GamePath;
+        public string Title;
+        public List<PlaySession> Sessions = new List<PlaySession>();
+
+        public long TotalSeconds
+        {
+            get
+            {
+                long total = 0;
+                foreach (var s in Sessions)
+                {
+                    total += s.Seconds;
+                }
+                return total;
+            }
+        }
+
+        public string DisplayName =>
+            !string.IsNullOrWhiteSpace(Title) ? Title.Trim() : PathUtil.FileName(GamePath);
+    }
+
+    internal sealed class PlayniteGame
+    {
+        public Guid Id;
+        public string Name;
+        public string InstallDirectory;
+        public ulong Playtime;
+        public ulong PlayCount;
+        public DateTime? LastActivity;
+
+        /// <summary>プレイアクションの Path と、引数に混ざっている exe。LE 経由だと後者にしか出ない。</summary>
+        public List<string> ActionPaths = new List<string>();
+
+        /// <summary>ファイルを書き戻すときに他の項目を壊さないよう、元の JSON をそのまま持っておく。</summary>
+        public string FilePath;
+    }
+
+    internal enum MatchKind
+    {
+        None,
+        Path,
+        Title,
+    }
+
+    internal sealed class MatchResult
+    {
+        public LunaGame Luna;
+        public PlayniteGame Playnite;
+        public MatchKind Kind;
+    }
+}
