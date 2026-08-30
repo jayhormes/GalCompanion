@@ -70,13 +70,14 @@ LunaImport.exe --luna "D:\LunaTranslator" --apply
 | 選項 | 說明 |
 |---|---|
 | `--luna <路徑>` | LunaTranslator 資料夾（或直接指到它的 `userconfig`） |
-| `--playnite <路徑>` | 預設 `%AppData%\Playnite` |
+| `--playnite <路徑>` | 預設 `%AppData%\Playnite`。資料庫搬過家就指到那裡，或直接把 `library` 資料夾丟給它 |
 | `--apply` | 實際寫入 |
 | `--overwrite` | Playnite 已有時數的也覆蓋（預設跳過） |
 | `--no-sessions` | 只寫總時數，不寫逐次遊玩紀錄 |
 | `--game-activity` | 逐次紀錄也寫一份進 GameActivity 擴充 |
 | `--backup <路徑>` | 備份 zip 位置，預設 `<Playnite>\LunaImportBackup` |
 
+- 遊戲庫的位置會自己找：先看預設的 `library\games`，沒有就讀 `config.json` 的 `DatabasePath`（Playnite 設定裡搬過家、或可攜版都在這裡）。都找不到會把試過的路徑印出來。
 - **跑之前要關掉 Playnite**（工具會擋）。開著的話記憶體裡的舊資料會蓋回去。
 - 寫入前一定會備份：`library\games` 整包 zip、既有的 `sessions.tsv`，用到 GameActivity 的話那份也一起。
 - 配對優先用 exe 路徑，找不到才用標題。Locale Emulator 轉換過的遊戲，`Path` 是 `LEProc.exe`，工具會去看參數裡的 exe。標題重複的不會亂猜，一律列為未配對。

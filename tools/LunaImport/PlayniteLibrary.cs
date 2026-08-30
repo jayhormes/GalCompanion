@@ -25,6 +25,77 @@ namespace LunaImport
             return Path.Combine(playniteRoot, "library", "games");
         }
 
+        /// <summary>
+        /// library の場所は config.json の DatabasePath で動かせる（ポータブル版・別ドライブ）。
+        /// 既定 → config.json → 渡されたパス自体が library か games、の順に見て最初に在るものを返す。
+        /// </summary>
+        public static string FindGamesDir(string playniteRoot, out List<string> tried)
+        {
+            tried = GamesDirCandidates(playniteRoot);
+            foreach (var candidate in tried)
+            {
+                if (Directory.Exists(candidate))
+                {
+                    return candidate;
+                }
+            }
+            return null;
+        }
+
+        internal static List<string> GamesDirCandidates(string playniteRoot)
+        {
+            var candidates = new List<string>();
+            Action<string> add = path =>
+            {
+                if (!string.IsNullOrWhiteSpace(path)
+                    && !candidates.Any(c => string.Equals(c, path, StringComparison.OrdinalIgnoreCase)))
+                {
+                    candidates.Add(path);
+                }
+            };
+
+            add(GamesDir(playniteRoot));
+            var configured = ReadConfiguredDatabasePath(playniteRoot);
+            if (configured != null)
+            {
+                add(Path.Combine(ExpandPath(configured, playniteRoot), "games"));
+            }
+            // --playnite に library や games を直接渡された場合
+            add(Path.Combine(playniteRoot, "games"));
+            if (string.Equals(Path.GetFileName(playniteRoot.TrimEnd(Path.DirectorySeparatorChar)),
+                    "games", StringComparison.OrdinalIgnoreCase))
+            {
+                add(playniteRoot);
+            }
+            return candidates;
+        }
+
+        internal static string ReadConfiguredDatabasePath(string playniteRoot)
+        {
+            var configPath = Path.Combine(playniteRoot, "config.json");
+            if (!File.Exists(configPath))
+            {
+                return null;
+            }
+            try
+            {
+                var value = (string)Json.Parse(File.ReadAllText(configPath))["DatabasePath"];
+                return string.IsNullOrWhiteSpace(value) ? null : value;
+            }
+            catch (JsonException)
+            {
+                return null;
+            }
+        }
+
+        /// <summary>%AppData% などの環境変数と {PlayniteDir}、それに相対パスを解く。</summary>
+        internal static string ExpandPath(string raw, string playniteRoot)
+        {
+            var path = Environment.ExpandEnvironmentVariables(raw.Trim())
+                .Replace("{PlayniteDir}", playniteRoot);
+            return Path.IsPathRooted(path) ? path : Path.Combine(playniteRoot, path);
+        }
+
         internal static PlayniteGame ParseGame(JObject json, string filePath)
         {
             Guid id;

@@ -54,11 +54,24 @@ namespace LunaImport
                 return 1;
             }
 
-            var gamesDir = PlayniteLibrary.GamesDir(options.PlayniteRoot);
-            if (!Directory.Exists(gamesDir))
+            List<string> tried;
+            var gamesDir = PlayniteLibrary.FindGamesDir(options.PlayniteRoot, out tried);
+            if (gamesDir == null)
             {
-                Console.Error.WriteLine($"找不到 Playnite 的遊戲庫：{gamesDir}");
+                Console.Error.WriteLine("找不到 Playnite 的遊戲庫。找過這些位置：");
+                foreach (var path in tried)
+                {
+                    Console.Error.WriteLine("  " + path);
+                }
+                Console.Error.WriteLine();
+                Console.Error.WriteLine("Playnite 的「設定 → 一般 → 資料庫位置」如果搬過，用 --playnite 指到那個資料夾的上一層，");
+                Console.Error.WriteLine("或直接把 library 資料夾的路徑丟給 --playnite。可攜版的話 library 在 Playnite 安裝資料夾裡面。");
                 return 1;
+            }
+            if (!string.Equals(gamesDir, PlayniteLibrary.GamesDir(options.PlayniteRoot),
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                Console.WriteLine("遊戲庫：" + gamesDir);
             }
 
             if (options.Apply && IsPlayniteRunning())
