@@ -84,6 +84,11 @@ namespace GalCompanion
             panel.Children.Add(TextRow("LE profile GUID", "Settings.LocaleEmulatorProfileGuid",
                 "留空 = 用 LE 設定的預設 profile。"));
 
+            panel.Children.Add(Header("LunaTranslator 匯入"));
+            panel.Children.Add(TextRow("LunaTranslator 資料夾", "Settings.LunaTranslatorPath",
+                "留空的話匯入時會跳資料夾選擇。"));
+            panel.Children.Add(Note("匯入在「擴充功能 → GalCompanion → 從 LunaTranslator 匯入遊玩時間」。"));
+
             Content = new ScrollViewer
             {
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto,

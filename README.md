@@ -51,37 +51,19 @@ nas:playnite/playtime/
 
 Playnite 的 `Playtime` 取 `max(現有值, 紀錄總和)`。Steam/GOG 匯入的、沒有 session 撐著的時數不會被歸零。
 
-## LunaImport — 把 LunaTranslator 的遊玩時間搬進 Playnite
+## 從 LunaTranslator 匯入遊玩時間
 
-`tools/LunaImport` 是獨立的小工具（不是插件），一次性遷移用。從 Release 或 Actions artifact 下載 `LunaImport.zip`，解壓後在命令列跑。
+**擴充功能 → GalCompanion → 從 LunaTranslator 匯入遊玩時間**。一次性遷移用，Playnite 開著就能跑。
 
-LunaTranslator 把每一次開關遊戲都記在 `userconfig\savegame.db`（SQLite），所以搬過來的不只是總時數 —— 逐次紀錄會寫進 GalCompanion 自己的 `sessions.tsv`，熱力圖上就會看到真實的歷史分布，而不是全部堆在匯入那天。加 `--game-activity` 也可以同時寫一份給 [GameActivity](https://github.com/Lacro59/playnite-gameactivity-plugin) 擴充。
+LunaTranslator 把每一次開關遊戲都記在 `userconfig\savegame.db`（SQLite），所以搬過來的不只是總時數 —— 逐次紀錄會寫進 GalCompanion 自己的 `sessions.tsv`，熱力圖上就會看到真實的歷史分布，而不是全部堆在匯入那天。
 
-```
-LunaImport.exe --luna "D:\LunaTranslator"
-```
+按下去會先跑一次配對，把結果分成四組列出來（會寫入 / Playnite 找不到對應的 / Luna 沒有紀錄的 / Playnite 已有時數的），確認後才寫。
 
-不加 `--apply` 只會印報告，什麼都不動。確認配對正確後再加：
-
-```
-LunaImport.exe --luna "D:\LunaTranslator" --apply
-```
-
-| 選項 | 說明 |
-|---|---|
-| `--luna <路徑>` | LunaTranslator 資料夾（或直接指到它的 `userconfig`） |
-| `--playnite <路徑>` | 預設 `%AppData%\Playnite`。資料庫搬過家就指到那裡，或直接把 `library` 資料夾丟給它 |
-| `--apply` | 實際寫入 |
-| `--overwrite` | Playnite 已有時數的也覆蓋（預設跳過） |
-| `--no-sessions` | 只寫總時數，不寫逐次遊玩紀錄 |
-| `--game-activity` | 逐次紀錄也寫一份進 GameActivity 擴充 |
-| `--backup <路徑>` | 備份 zip 位置，預設 `<Playnite>\LunaImportBackup` |
-
-- 遊戲庫的位置會自己找：先看預設的 `library\games`，沒有就讀 `config.json` 的 `DatabasePath`（Playnite 設定裡搬過家、或可攜版都在這裡）。都找不到會把試過的路徑印出來。
-- **跑之前要關掉 Playnite**（工具會擋）。開著的話記憶體裡的舊資料會蓋回去。
-- 寫入前一定會備份：`library\games` 整包 zip、既有的 `sessions.tsv`，用到 GameActivity 的話那份也一起。
-- 配對優先用 exe 路徑，找不到才用標題。Locale Emulator 轉換過的遊戲，`Path` 是 `LEProc.exe`，工具會去看參數裡的 exe。標題重複的不會亂猜，一律列為未配對。
-- 重跑不會重複累加 —— 以「遊戲＋session 開始時間」去重，跟插件用的是同一份 `SessionLog` 程式碼（`tools/LunaImport` 直接連結 `src/SessionLog.cs`，不另外複製一份定義）。
+- 資料夾在設定畫面填 **LunaTranslator 資料夾**，留空的話按下去會跳資料夾選擇。
+- 配對優先用 exe 路徑，找不到才用標題。Locale Emulator 轉換過的遊戲，`Path` 是 `LEProc.exe`，會去看參數裡的 exe。標題重複的不會亂猜，一律列為未配對。
+- Playnite 已經有時數的預設跳過，勾「連 Playnite 已經有時數的也覆蓋」才會蓋。
+- 重跑不會重複累加 —— 以「遊戲＋session 開始時間」去重，跟平常記錄用的是同一套 `SessionLog`。
+- 寫逐次紀錄之前會先把現有的 `sessions.tsv` 複製到 `ExtensionsData\<GUID>\lunaimport-backup`。Playnite 那邊走官方 API，不直接動資料庫檔案。
 - 不需要裝 SQLite：走 Windows 10 以後內建的 `winsqlite3.dll`。
 
 ## 安裝
@@ -134,6 +116,7 @@ Journal / 2026 / 08 - 八月 / 29 - 週六
 | `SaveRules` | `{}` | gameId → 存檔路徑規則，見下 |
 | `LocaleEmulatorPath` | 空 | LEProc.exe 完整路徑；填了遊戲右鍵選單才會出現 LE 轉換 |
 | `LocaleEmulatorProfileGuid` | 空 | LE profile 的 GUID（走 `-runas`）；留空用 LE 預設 profile |
+| `LunaTranslatorPath` | 空 | LunaTranslator 資料夾；留空的話匯入時會跳資料夾選擇 |
 
 ### 存檔同步設定
 

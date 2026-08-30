@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace LunaImport
+namespace GalCompanion
 {
     /// <summary>LunaTranslator の 1 回の起動から終了まで。</summary>
     internal sealed class LunaSession
@@ -47,9 +47,6 @@ namespace LunaImport
 
         /// <summary>プレイアクションの Path と、引数に混ざっている exe。LE 経由だと後者にしか出ない。</summary>
         public List<string> ActionPaths = new List<string>();
-
-        /// <summary>ファイルを書き戻すときに他の項目を壊さないよう、元の JSON をそのまま持っておく。</summary>
-        public string FilePath;
     }
 
     internal enum MatchKind

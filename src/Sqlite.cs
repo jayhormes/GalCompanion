@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace LunaImport
+namespace GalCompanion
 {
     /// <summary>
     /// 読み取り専用の最小 SQLite。Windows 10 以降が持っている winsqlite3.dll を直接叩くので、

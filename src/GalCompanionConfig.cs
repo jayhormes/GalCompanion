@@ -36,6 +36,7 @@ namespace GalCompanion
         private Dictionary<string, SaveRule> saveRules = new Dictionary<string, SaveRule>();
         private string localeEmulatorPath = string.Empty;
         private string localeEmulatorProfileGuid = string.Empty;
+        private string lunaTranslatorPath = string.Empty;
 
         // 留空 = 不註冊熱鍵，只用氣泡窗
         public string Hotkey
@@ -235,6 +236,13 @@ namespace GalCompanion
             set => SetValue(ref localeEmulatorProfileGuid, value);
         }
 
+        // LunaTranslator 資料夾；留空的話匯入時會跳資料夾選擇
+        public string LunaTranslatorPath
+        {
+            get => lunaTranslatorPath;
+            set => SetValue(ref lunaTranslatorPath, value);
+        }
+
         public GalCompanionConfig Clone()
         {
             var clone = new GalCompanionConfig
@@ -267,6 +275,7 @@ namespace GalCompanion
                 SaveSyncKeepHistory = SaveSyncKeepHistory,
                 LocaleEmulatorPath = LocaleEmulatorPath,
                 LocaleEmulatorProfileGuid = LocaleEmulatorProfileGuid,
+                LunaTranslatorPath = LunaTranslatorPath,
                 SaveRules = new Dictionary<string, SaveRule>()
             };
 

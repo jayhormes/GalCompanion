@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace LunaImport
+namespace GalCompanion
 {
     internal enum PlanAction
     {

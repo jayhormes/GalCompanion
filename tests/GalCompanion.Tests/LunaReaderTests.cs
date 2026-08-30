@@ -3,7 +3,7 @@ using System.IO;
 using System.Linq;
 using Xunit;
 
-namespace LunaImport.Tests
+namespace GalCompanion.Tests
 {
     public class LunaReaderTests
     {

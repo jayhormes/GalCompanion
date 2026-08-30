@@ -1,6 +1,6 @@
 using Xunit;
 
-namespace LunaImport.Tests
+namespace GalCompanion.Tests
 {
     public class PathUtilTests
     {

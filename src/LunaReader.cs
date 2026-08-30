@@ -1,10 +1,9 @@
-using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
-namespace LunaImport
+namespace GalCompanion
 {
     /// <summary>
     /// LunaTranslator の userconfig を読む。
@@ -52,33 +51,33 @@ namespace LunaImport
         internal static Dictionary<string, LunaGame> ParseGameList(string json)
         {
             var games = new Dictionary<string, LunaGame>(StringComparer.Ordinal);
-            var root = JToken.Parse(json);
-            if (root.Type != JTokenType.Array || root.Count() < 2)
+            var root = JsonParser.TryParse(json);
+            if (root == null || root.Kind != JsonKind.Array || root.Count < 2)
             {
                 return games;
             }
 
-            var data = root[1] as JObject;
-            if (data == null)
+            var data = root[1];
+            if (data == null || data.Kind != JsonKind.Object)
             {
                 return games;
             }
 
-            foreach (var pair in data)
+            foreach (var pair in data.Members)
             {
-                var entry = pair.Value as JObject;
-                if (entry == null)
+                var entry = pair.Value;
+                if (entry == null || entry.Kind != JsonKind.Object)
                 {
                     continue;
                 }
 
                 // 新形式はキーが uid で gamepath は中にある。旧形式はキーがそのままパス
-                var gamePath = (string)entry["gamepath"] ?? pair.Key;
+                var gamePath = entry["gamepath"].AsStringOrNull() ?? pair.Key;
                 games[pair.Key] = new LunaGame
                 {
                     Uid = pair.Key,
                     GamePath = gamePath,
-                    Title = (string)entry["title"],
+                    Title = entry["title"].AsStringOrNull(),
                 };
             }
             return games;

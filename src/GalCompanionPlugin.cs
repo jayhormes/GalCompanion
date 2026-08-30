@@ -444,6 +444,144 @@ namespace GalCompanion
             }
         }
 
+        public override IEnumerable<MainMenuItem> GetMainMenuItems(GetMainMenuItemsArgs args)
+        {
+            yield return new MainMenuItem
+            {
+                Description = "從 LunaTranslator 匯入遊玩時間",
+                MenuSection = "@GalCompanion",
+                Action = a => ImportFromLuna(),
+            };
+        }
+
+        /// <summary>
+        /// LunaTranslator の記録を取り込む。ライブラリは API 経由で書くので Playnite は開いたままでいい。
+        /// </summary>
+        private void ImportFromLuna()
+        {
+            var lunaRoot = config.LunaTranslatorPath;
+            if (string.IsNullOrWhiteSpace(lunaRoot))
+            {
+                lunaRoot = PlayniteApi.Dialogs.SelectFolder();
+                if (string.IsNullOrWhiteSpace(lunaRoot))
+                {
+                    return;
+                }
+            }
+
+            var service = new LunaImportService(sessions);
+            List<PlanEntry> plan;
+            try
+            {
+                plan = LunaImportService.Plan(lunaRoot, SnapshotLibrary(), false);
+            }
+            catch (Exception e)
+            {
+                logger.Error(e, "GalCompanion 匯入 LunaTranslator 失敗");
+                PlayniteApi.Dialogs.ShowErrorMessage(e.Message, "GalCompanion");
+                return;
+            }
+
+            var window = new LunaImportWindow { Owner = GetOwnerWindow() };
+            window.ReplanRequested += () =>
+            {
+                try
+                {
+                    window.SetPlan(LunaImportService.Plan(lunaRoot, SnapshotLibrary(), window.Overwrite));
+                }
+                catch (Exception e)
+                {
+                    logger.Error(e, "GalCompanion 重新計算匯入計畫失敗");
+                }
+            };
+            window.SetPlan(plan);
+            if (window.ShowDialog() != true)
+            {
+                return;
+            }
+
+            try
+            {
+                ApplyLunaImport(service, LunaImportService.Plan(lunaRoot, SnapshotLibrary(), window.Overwrite),
+                    window.WriteSessions);
+            }
+            catch (Exception e)
+            {
+                logger.Error(e, "GalCompanion 寫入 LunaTranslator 紀錄失敗");
+                PlayniteApi.Dialogs.ShowErrorMessage(e.Message, "GalCompanion");
+            }
+        }
+
+        private List<PlayniteGame> SnapshotLibrary()
+        {
+            var library = new List<PlayniteGame>();
+            foreach (var game in PlayniteApi.Database.Games)
+            {
+                var actions = new List<KeyValuePair<string, string>>();
+                if (game.GameActions != null)
+                {
+                    foreach (var action in game.GameActions)
+                    {
+                        actions.Add(new KeyValuePair<string, string>(action.Path, action.Arguments));
+                    }
+                }
+                library.Add(LunaImportService.Describe(
+                    game.Id, game.Name, game.InstallDirectory,
+                    game.Playtime, game.PlayCount, game.LastActivity, actions));
+            }
+            return library;
+        }
+
+        private void ApplyLunaImport(LunaImportService service, List<PlanEntry> plan, bool writeSessions)
+        {
+            var writable = plan.Where(p => p.Action == PlanAction.Write).ToList();
+            if (writable.Count == 0)
+            {
+                return;
+            }
+
+            var backup = writeSessions
+                ? service.BackupSessions(
+                    Path.Combine(GetPluginUserDataPath(), "lunaimport-backup"),
+                    DateTime.Now.ToString("yyyyMMdd_HHmmss"))
+                : null;
+
+            foreach (var entry in writable)
+            {
+                var game = PlayniteApi.Database.Games.Get(entry.Playnite.Id);
+                if (game == null)
+                {
+                    continue;
+                }
+                game.Playtime = entry.NewPlaytime;
+                if (entry.SessionCount > 0 && game.PlayCount < (ulong)entry.SessionCount)
+                {
+                    game.PlayCount = (ulong)entry.SessionCount;
+                }
+                if (entry.LastSession != null
+                    && (game.LastActivity == null || game.LastActivity < entry.LastSession.Value))
+                {
+                    game.LastActivity = entry.LastSession.Value;
+                }
+                PlayniteApi.Database.Games.Update(game);
+            }
+
+            var added = writeSessions ? service.WriteSessions(writable) : 0;
+            var message = writeSessions
+                ? $"已寫入 {writable.Count} 款，遊玩紀錄新增 {added} 筆。"
+                : $"已寫入 {writable.Count} 款。";
+            if (backup != null)
+            {
+                message += $"\n紀錄備份：{backup}";
+            }
+            PlayniteApi.Dialogs.ShowMessage(message, "GalCompanion");
+        }
+
+        private Window GetOwnerWindow()
+        {
+            return Application.Current?.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive);
+        }
+
         public override IEnumerable<SidebarItem> GetSidebarItems()
         {
             yield return new SidebarItem

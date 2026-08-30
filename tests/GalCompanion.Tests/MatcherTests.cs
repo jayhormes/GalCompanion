@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using Xunit;
 
-namespace LunaImport.Tests
+namespace GalCompanion.Tests
 {
     public class MatcherTests
     {

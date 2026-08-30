@@ -46,14 +46,21 @@ own file and reads the union of all of them, so two machines playing the same
 game never overwrite each other and there is nothing to resolve. Sessions are
 pulled when Playnite starts and pushed when a game ends or Playnite closes.
 
-**LunaImport**
+**Import from LunaTranslator**
 
-A separate tool in the release, for a one-time move from LunaTranslator. It
-reads LunaTranslator's session database, matches games by executable path
-(including games launched through Locale Emulator), and writes the history into
-Playnite and into the activity calendar. Run it with Playnite closed. Without
-`--apply` it only prints what it would do. Everything it touches is backed up
-first, and running it twice does not double count.
+Extensions menu, "從 LunaTranslator 匯入遊玩時間". A one-time move: it reads
+LunaTranslator's session database, matches games by executable path (including
+games launched through Locale Emulator), and writes the history into Playnite
+and into the activity calendar.
+
+The match is shown before anything is written, grouped by what will happen to
+each game. Playnite goes through the official API, so the library is never
+touched directly and Playnite can stay open. The session log is backed up first,
+and running the import twice does not double count.
+
+The v2.0.0 release shipped this as a standalone LunaImport.exe. That tool read
+the library as one JSON file per game, which is the Playnite 8 layout — on any
+current Playnite it could not find the library at all. It has been removed.
 
 **Also**
 

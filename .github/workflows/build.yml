@@ -22,12 +22,6 @@ jobs:
       - name: Test
         run: dotnet test tests/GalCompanion.Tests/GalCompanion.Tests.csproj -c Release
 
-      - name: Build LunaImport
-        run: dotnet build tools/LunaImport/LunaImport.csproj -c Release
-
-      - name: Test LunaImport
-        run: dotnet test tools/LunaImport.Tests/LunaImport.Tests.csproj -c Release
-
       - name: Package pext
         shell: pwsh
         run: |
@@ -38,26 +32,14 @@ jobs:
           Compress-Archive -Path staging/* -DestinationPath GalCompanion.zip
           Move-Item GalCompanion.zip GalCompanion.pext
 
-      - name: Package LunaImport
-        shell: pwsh
-        run: |
-          Compress-Archive -Path tools/LunaImport/bin/Release/net462/* -DestinationPath LunaImport.zip
-
       - uses: actions/upload-artifact@v4
         with:
           name: GalCompanion-pext
           path: GalCompanion.pext
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: LunaImport
-          path: LunaImport.zip
-
       - name: Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            GalCompanion.pext
-            LunaImport.zip
+          files: GalCompanion.pext
           body_path: RELEASE_NOTES.md

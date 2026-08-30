@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
 
-namespace LunaImport
+namespace GalCompanion
 {
     /// <summary>
     /// LunaTranslator のゲームと Playnite のゲームを突き合わせる。
