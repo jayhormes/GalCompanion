@@ -109,6 +109,7 @@ Journal / 2026 / 08 - 八月 / 29 - 週六
 | `TriliumTranslationTitle` | `翻譯問題` | 心得底下的子議題 note 標題（📝 寫這裡）。它是心得的子頁，所以不會自動加遊戲名；要加就自己寫 `{game}` |
 | `TriliumSendScreenshots` | `true` | 📷 自動 append；`false` 則只有 📝 手動記錄才送（📝 不受這個設定影響） |
 | `SaveSyncEnabled` | `false` | 開啟存檔同步 |
+| `PlaytimeSyncEnabled` | `false` | 開啟遊玩紀錄同步，用同一組 rclone 設定 |
 | `RclonePath` | `rclone` | rclone.exe 路徑；在 PATH 裡就不用改 |
 | `RcloneRemote` | 空 | rclone remote＋根目錄，例 `nas:playnite-saves` |
 | `SaveSyncToleranceSeconds` | `3` | 時間戳比較容差；zip 時間戳解析度 2 秒，勿低於 3 |
