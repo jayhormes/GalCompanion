@@ -110,6 +110,78 @@ namespace LunaImport.Tests
         }
 
         [Fact]
+        public void Config_at_the_default_parent_is_used_when_library_is_passed_directly()
+        {
+            using (var temp = new TempDir())
+            {
+                var root = Directory.CreateDirectory(Path.Combine(temp.Path, "Playnite")).FullName;
+                var moved = Path.Combine(temp.Path, "moved", "library", "games");
+                Directory.CreateDirectory(moved);
+                File.WriteAllText(Path.Combine(root, "config.json"),
+                    "{\"DatabasePath\": \"" + Path.Combine(temp.Path, "moved", "library").Replace("\\", "\\\\") + "\"}");
+
+                // ユーザーが --playnite に library を渡しても、親の config.json から拾えること
+                System.Collections.Generic.List<string> tried;
+                Assert.Equal(moved,
+                    PlayniteLibrary.FindGamesDir(Path.Combine(root, "library"), out tried));
+            }
+        }
+
+        [Fact]
+        public void Scan_finds_a_games_folder_that_sits_somewhere_else()
+        {
+            using (var temp = new TempDir())
+            {
+                var library = Path.Combine(temp.Path, "some", "where", "library");
+                var games = Path.Combine(library, "games");
+                Directory.CreateDirectory(games);
+                Directory.CreateDirectory(Path.Combine(library, "platforms"));
+                File.WriteAllText(Path.Combine(games, "a.json"), "{}");
+
+                Assert.Equal(games, PlayniteLibrary.ScanForGamesDir(temp.Path, 3));
+            }
+        }
+
+        [Fact]
+        public void Scan_ignores_a_games_folder_without_the_library_siblings()
+        {
+            using (var temp = new TempDir())
+            {
+                var games = Path.Combine(temp.Path, "ExtraMetadata", "games");
+                Directory.CreateDirectory(games);
+                File.WriteAllText(Path.Combine(games, "a.json"), "{}");
+
+                Assert.Null(PlayniteLibrary.ScanForGamesDir(temp.Path, 3));
+            }
+        }
+
+        [Fact]
+        public void Scan_ignores_an_empty_games_folder()
+        {
+            using (var temp = new TempDir())
+            {
+                Directory.CreateDirectory(Path.Combine(temp.Path, "library", "games"));
+                Directory.CreateDirectory(Path.Combine(temp.Path, "library", "platforms"));
+
+                Assert.Null(PlayniteLibrary.ScanForGamesDir(temp.Path, 3));
+            }
+        }
+
+        [Fact]
+        public void Scan_stops_at_the_depth_limit()
+        {
+            using (var temp = new TempDir())
+            {
+                var library = Path.Combine(temp.Path, "a", "b", "c", "d", "library");
+                Directory.CreateDirectory(Path.Combine(library, "games"));
+                Directory.CreateDirectory(Path.Combine(library, "platforms"));
+                File.WriteAllText(Path.Combine(library, "games", "a.json"), "{}");
+
+                Assert.Null(PlayniteLibrary.ScanForGamesDir(temp.Path, 3));
+            }
+        }
+
+        [Fact]
         public void Broken_config_is_ignored_instead_of_throwing()
         {
             using (var temp = new TempDir())

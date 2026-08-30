@@ -39,7 +39,7 @@ namespace LunaImport
                     return candidate;
                 }
             }
-            return null;
+            return ScanForGamesDir(playniteRoot, 3) ?? ScanForGamesDir(DefaultRoot(), 3);
         }
 
         internal static List<string> GamesDirCandidates(string playniteRoot)
@@ -55,11 +55,6 @@ namespace LunaImport
             };
 
             add(GamesDir(playniteRoot));
-            var configured = ReadConfiguredDatabasePath(playniteRoot);
-            if (configured != null)
-            {
-                add(Path.Combine(ExpandPath(configured, playniteRoot), "games"));
-            }
             // --playnite に library や games を直接渡された場合
             add(Path.Combine(playniteRoot, "games"));
             if (string.Equals(Path.GetFileName(playniteRoot.TrimEnd(Path.DirectorySeparatorChar)),
@@ -67,7 +62,90 @@ namespace LunaImport
             {
                 add(playniteRoot);
             }
+
+            // config.json は渡されたフォルダだけでなく既定の場所も見る。
+            // --playnite に library を直接渡されると設定を読み損ねるため。
+            foreach (var root in ConfigRoots(playniteRoot))
+            {
+                var configured = ReadConfiguredDatabasePath(root);
+                if (configured != null)
+                {
+                    add(Path.Combine(ExpandPath(configured, root), "games"));
+                }
+            }
             return candidates;
+        }
+
+        private static IEnumerable<string> ConfigRoots(string playniteRoot)
+        {
+            yield return playniteRoot;
+            var parent = Path.GetDirectoryName(playniteRoot.TrimEnd(Path.DirectorySeparatorChar));
+            if (!string.IsNullOrEmpty(parent))
+            {
+                yield return parent;
+            }
+            yield return DefaultRoot();
+        }
+
+        /// <summary>
+        /// それでも見つからないとき用。games という名前で、隣に platforms などが並んでいる
+        /// フォルダを浅く探す。Playnite のライブラリはこの形しかない。
+        /// </summary>
+        internal static string ScanForGamesDir(string root, int maxDepth)
+        {
+            if (!Directory.Exists(root))
+            {
+                return null;
+            }
+            var level = new List<string> { root };
+            for (var depth = 0; depth <= maxDepth && level.Count > 0; depth++)
+            {
+                var next = new List<string>();
+                foreach (var dir in level)
+                {
+                    string[] children;
+                    try
+                    {
+                        children = Directory.GetDirectories(dir);
+                    }
+                    catch (IOException) { continue; }
+                    catch (UnauthorizedAccessException) { continue; }
+
+                    foreach (var child in children)
+                    {
+                        if (LooksLikeGamesDir(child))
+                        {
+                            return child;
+                        }
+                        next.Add(child);
+                    }
+                }
+                level = next;
+            }
+            return null;
+        }
+
+        private static readonly string[] siblingDirNames =
+            { "platforms", "emulators", "genres", "tags", "companies", "filterpresets" };
+
+        private static bool LooksLikeGamesDir(string path)
+        {
+            if (!string.Equals(Path.GetFileName(path), "games", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+            try
+            {
+                if (Directory.GetFiles(path, "*.json").Length == 0)
+                {
+                    return false;
+                }
+                var parent = Path.GetDirectoryName(path);
+                return parent != null
+                    && siblingDirNames.Any(name => Directory.Exists(Path.Combine(parent, name)));
+            }
+            catch (IOException) { return false; }
+            catch (UnauthorizedAccessException) { return false; }
         }
 
         internal static string ReadConfiguredDatabasePath(string playniteRoot)

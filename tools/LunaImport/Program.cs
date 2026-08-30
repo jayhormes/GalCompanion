@@ -63,9 +63,10 @@ namespace LunaImport
                 {
                     Console.Error.WriteLine("  " + path);
                 }
+                DumpFolder(options.PlayniteRoot);
                 Console.Error.WriteLine();
-                Console.Error.WriteLine("Playnite 的「設定 → 一般 → 資料庫位置」如果搬過，用 --playnite 指到那個資料夾的上一層，");
-                Console.Error.WriteLine("或直接把 library 資料夾的路徑丟給 --playnite。可攜版的話 library 在 Playnite 安裝資料夾裡面。");
+                Console.Error.WriteLine("Playnite 的「設定 → 一般」會顯示資料庫位置。--playnite 請指到 library 的上一層，");
+                Console.Error.WriteLine("或直接把 library 資料夾丟進來。不加 --playnite 的話會自己讀 config.json。");
                 return 1;
             }
             if (!string.Equals(gamesDir, PlayniteLibrary.GamesDir(options.PlayniteRoot),
@@ -141,6 +142,26 @@ namespace LunaImport
 
             Console.WriteLine($"已寫入 {writable.Count} 款。啟動 Playnite 確認。");
             return 0;
+        }
+
+        private static void DumpFolder(string path)
+        {
+            if (!Directory.Exists(path))
+            {
+                Console.Error.WriteLine();
+                Console.Error.WriteLine($"（{path} 這個資料夾本身也不存在）");
+                return;
+            }
+            Console.Error.WriteLine();
+            Console.Error.WriteLine($"{path} 裡面有：");
+            foreach (var dir in Directory.GetDirectories(path).Take(30))
+            {
+                Console.Error.WriteLine("  " + Path.GetFileName(dir) + Path.DirectorySeparatorChar);
+            }
+            foreach (var file in Directory.GetFiles(path).Take(30))
+            {
+                Console.Error.WriteLine("  " + Path.GetFileName(file));
+            }
         }
 
         private static bool IsPlayniteRunning()
