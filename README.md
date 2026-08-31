@@ -9,7 +9,7 @@ Playnite 外掛。給 GalGame 玩家的遊玩伴侶：截圖筆記、（規劃�
 - 📷 / 📝 **兩段式記錄**（`CaptureWithNote`，預設開）：第一次按跳出輸入框，寫一句註解，第二次按同一顆（或 Enter / 送出鈕）才截圖，文字與圖一起送 Trilium —— 📷 進「<遊戲名> 遊戲心得」、📝 進其底下的「翻譯問題」。什麼都不寫就是連按兩次。輸入框裡可以取消「附上截圖」只送文字。目的是玩到一半當下就記完，不用事後回想
 - 📷 **右鍵＝只進剪貼簿**：不落地、不上傳，臨時貼圖用
 - 📝 **記一筆**：寫進 Trilium 的子議題「翻譯問題」（沒設定 Trilium 時按了會告訴你要去哪裡設）
-- 可選全域熱鍵（預設 `Shift+F12`，等同左鍵；config 留空停用）
+- 可選全域熱鍵（等同左鍵）。**預設關**，要用再去設定打開 —— 全域熱鍵會蓋掉遊戲自己的鍵位
 - 截圖歸檔路徑相容 ExtraMetadata 慣例：`<Playnite設定目錄>\ExtraMetadata\games\<GameId>\screenshots\`
 - 遊戲右鍵選單 → GalCompanion → 打開截圖資料夾
 - 成功時播系統提示音；沒有遊戲在跑時截到的圖存到 `ExtraMetadata\screenshots\unassigned\`
@@ -89,7 +89,8 @@ Journal / 2026 / 08 - 八月 / 29 - 週六
 
 | 欄位 | 預設 | 說明 |
 |---|---|---|
-| `Hotkey` | `Shift+F12` | 格式 `修飾鍵+按鍵`，如 `Ctrl+Alt+S`、`F9`。修飾鍵：Ctrl / Alt / Shift / Win。按鍵名用 WPF Key 名稱（數字鍵用 D0-D9）。留空 = 不用熱鍵 |
+| `HotkeyEnabled` | `false` | 是否註冊全域熱鍵。預設關 —— 全域熱鍵會蓋掉遊戲自己的鍵位 |
+| `Hotkey` | `Shift+F12` | 上面開啟時才生效。格式 `修飾鍵+按鍵`，如 `Ctrl+Alt+S`、`F9`。修飾鍵：Ctrl / Alt / Shift / Win。按鍵名用 WPF Key 名稱（數字鍵用 D0-D9） |
 | `ShowBubble` | `true` | 遊戲進行中顯示截圖氣泡窗 |
 | `BubbleX` / `BubbleY` | 空 | 氣泡窗位置，拖曳後自動記錄 |
 | `CaptureMode` | `auto` | `auto`：先試 PrintWindow，抓到全黑改抓螢幕。`printwindow` / `screencrop` 強制指定 |

@@ -31,8 +31,10 @@ namespace GalCompanion
                 "留空 = Playnite 的 ExtraMetadata 目錄。"));
             panel.Children.Add(TextRow("截圖模式", "Settings.CaptureMode",
                 "auto（先試 PrintWindow，全黑就改抓螢幕）／printwindow／screencrop。"));
-            panel.Children.Add(TextRow("全域熱鍵", "Settings.Hotkey",
-                "例 Shift+F12、Ctrl+Alt+S。留空 = 不用熱鍵，只用氣泡窗。"));
+            panel.Children.Add(CheckRow("使用全域熱鍵", "Settings.HotkeyEnabled",
+                "預設關。全域熱鍵會蓋掉遊戲自己的鍵位，氣泡窗就夠用了。"));
+            panel.Children.Add(TextRow("熱鍵", "Settings.Hotkey",
+                "例 Shift+F12、Ctrl+Alt+S。要上面那個勾起來才會生效。"));
 
             panel.Children.Add(Header("氣泡窗"));
             panel.Children.Add(CheckRow("遊戲進行中顯示氣泡窗", "Settings.ShowBubble", null));

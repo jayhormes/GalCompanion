@@ -37,13 +37,24 @@ namespace GalCompanion
         private string localeEmulatorPath = string.Empty;
         private string localeEmulatorProfileGuid = string.Empty;
         private string lunaTranslatorPath = string.Empty;
+        private bool hotkeyEnabled;
 
-        // 留空 = 不註冊熱鍵，只用氣泡窗
+        // 既定は切ってある。F12 まわりはゲーム側と当たりやすく、操作は氣泡窗だけで足りるため
+        public bool HotkeyEnabled
+        {
+            get => hotkeyEnabled;
+            set => SetValue(ref hotkeyEnabled, value);
+        }
+
+        // 切ったときも中身は残す。もう一度使うとき打ち直さなくていいように
         public string Hotkey
         {
             get => hotkey;
             set => SetValue(ref hotkey, value);
         }
+
+        /// <summary>実際に登録するか。空欄でも切ったのと同じ。</summary>
+        public bool UsesHotkey => HotkeyEnabled && !string.IsNullOrWhiteSpace(Hotkey);
 
         public bool ShowBubble
         {
@@ -248,6 +259,7 @@ namespace GalCompanion
             var clone = new GalCompanionConfig
             {
                 Hotkey = Hotkey,
+                HotkeyEnabled = HotkeyEnabled,
                 ShowBubble = ShowBubble,
                 BubbleX = BubbleX,
                 BubbleY = BubbleY,
@@ -294,7 +306,7 @@ namespace GalCompanion
         {
             var errors = new List<string>();
 
-            if (!string.IsNullOrWhiteSpace(Hotkey))
+            if (UsesHotkey)
             {
                 try
                 {

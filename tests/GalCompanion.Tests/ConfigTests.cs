@@ -9,6 +9,8 @@ namespace GalCompanion.Tests
         {
             var config = new GalCompanionConfig();
             Assert.Equal("Shift+F12", config.Hotkey);
+            Assert.False(config.HotkeyEnabled);
+            Assert.False(config.UsesHotkey);
             Assert.Equal("auto", config.CaptureMode);
             Assert.True(config.ClientAreaOnly);
             Assert.False(config.SaveToFile);

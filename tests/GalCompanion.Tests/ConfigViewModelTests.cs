@@ -117,14 +117,34 @@ namespace GalCompanion.Tests
         [Fact]
         public void Bad_hotkey_is_reported()
         {
-            var errors = new GalCompanionConfig { Hotkey = "Ctrl+NotAKey" }.Validate();
+            var errors = new GalCompanionConfig
+            {
+                HotkeyEnabled = true,
+                Hotkey = "Ctrl+NotAKey",
+            }.Validate();
+
             Assert.Contains(errors, e => e.Contains("熱鍵"));
         }
 
         [Fact]
         public void Empty_hotkey_is_allowed()
         {
-            Assert.Empty(new GalCompanionConfig { Hotkey = "" }.Validate());
+            Assert.Empty(new GalCompanionConfig { HotkeyEnabled = true, Hotkey = "" }.Validate());
+        }
+
+        // 使わない設定でエラーを出さない。切ってあるなら中身が壊れていても構わない
+        [Fact]
+        public void A_broken_hotkey_is_not_reported_while_it_is_switched_off()
+        {
+            Assert.Empty(new GalCompanionConfig { Hotkey = "Ctrl+NotAKey" }.Validate());
+        }
+
+        [Fact]
+        public void UsesHotkey_needs_both_the_switch_and_a_key()
+        {
+            Assert.False(new GalCompanionConfig { Hotkey = "Shift+F12" }.UsesHotkey);
+            Assert.False(new GalCompanionConfig { HotkeyEnabled = true, Hotkey = " " }.UsesHotkey);
+            Assert.True(new GalCompanionConfig { HotkeyEnabled = true, Hotkey = "Shift+F12" }.UsesHotkey);
         }
 
         [Theory]
@@ -205,6 +225,7 @@ namespace GalCompanion.Tests
             var original = new GalCompanionConfig
             {
                 Hotkey = "Ctrl+F1",
+                HotkeyEnabled = true,
                 BubbleX = 10,
                 BubbleY = 20,
                 TriliumEnabled = true,
@@ -219,6 +240,7 @@ namespace GalCompanion.Tests
             var clone = original.Clone();
 
             Assert.Equal("Ctrl+F1", clone.Hotkey);
+            Assert.True(clone.HotkeyEnabled);
             Assert.Equal(10, clone.BubbleX);
             Assert.Equal("https://a.example.com", clone.TriliumUrl);
             Assert.Equal("nas:saves", clone.RcloneRemote);

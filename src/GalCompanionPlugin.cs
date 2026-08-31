@@ -211,7 +211,7 @@ namespace GalCompanion
 
         private void InitHotkey()
         {
-            if (string.IsNullOrWhiteSpace(config.Hotkey))
+            if (!config.UsesHotkey)
             {
                 return;
             }
